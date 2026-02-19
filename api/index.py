@@ -15,7 +15,7 @@ app = Flask(__name__)
 # --- Configuration ---
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "ted-rag")
+PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "politics-tweets")
 
 EMBEDDING_MODEL = "RPRTHPB-text-embedding-3-small"
 GPT_MODEL = "RPRTHPB-gpt-5-mini"
@@ -31,10 +31,11 @@ client = OpenAI(
     base_url="https://api.llmod.ai/v1"
 )
 
-SYSTEM_PROMPT = """You are a TED Talk assistant that answers questions strictly and only based on the TED dataset context provided to you (metadata and transcript passages).
+SYSTEM_PROMPT = """You are a Politics Tweet assistant that answers questions strictly and only based on the politics tweet dataset context provided to you (tweet metadata and content).
 You must not use any external knowledge, the open internet, or information that is not explicitly contained in the retrieved context.
-If the answer cannot be determined from the provided context, respond: "I don't know based on the provided TED data."
-Always explain your answer using the given context, quoting or paraphrasing the relevant transcript or metadata when helpful.
+If the answer cannot be determined from the provided context, respond: "I don't know based on the provided tweet data."
+Always explain your answer using the given context, quoting or paraphrasing the relevant tweets or metadata when helpful.
+You can analyze sentiment, themes, authors, and content patterns from the provided tweets.
 You may add additional clarifications (e.g., response style), but you must keep the above constraints."""
 
 # --- Routes ---
@@ -68,28 +69,28 @@ def chat():
     # 2. Retrieve from Pinecone
     search_results = index.query(vector=query_vector, top_k=TOP_K, include_metadata=True)
 
-    # 3. Deduplicate (Ensure distinct talk titles)
-    unique_talks = {}
+    # 3. Process tweets (no deduplication needed since each tweet is unique)
+    context_list = []
     for match in search_results['matches']:
         meta = match['metadata']
-        tid = meta.get('talk_id')
         score = match['score']
-        if tid not in unique_talks or score > unique_talks[tid]['score']:
-            unique_talks[tid] = {
-                "talk_id": tid,
-                "title": meta.get('title'),
-                "speakers": meta.get('speakers'),
-                "chunk": meta.get('chunk_text'),
-                "score": score
-            }
+        context_list.append({
+            "tweet_id": meta.get('tweet_id'),
+            "account_id": meta.get('account_id'),
+            "author_name": meta.get('author_name'),
+            "author_screen_name": meta.get('author_screen_name'),
+            "text": meta.get('text'),
+            "text_len": meta.get('text_len'),
+            "score": score
+        })
 
-    # 4. Final Context List (Top 5 Unique)
-    final_context_list = sorted(unique_talks.values(), key=lambda x: x['score'], reverse=True)[:5]
+    # 4. Final Context List (Top 5)
+    final_context_list = context_list[:5]
 
     # 5. Build Augmented Prompt
     context_text = ""
     for item in final_context_list:
-        context_text += f"Title: {item['title']}\nSpeaker: {item['speakers']}\nTranscript: {item['chunk']}\n\n"
+        context_text += f"Author: {item['author_name']} (@{item['author_screen_name']})\nTweet: {item['text']}\nLength: {item['text_len']} chars\n\n"
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -117,26 +118,26 @@ CHAT_UI_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TED Assistant</title>
+    <title>Politics Tweet Assistant</title>
     <style>
         body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { background: white; width: 100%; max-width: 700px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #e62b1e; margin-top: 0; }
+        h1 { color: #1da1f2; margin-top: 0; }
         #chat-box { border: 1px solid #ddd; border-radius: 8px; padding: 15px; min-height: 200px; margin: 20px 0; background: #fafafa; white-space: pre-wrap; line-height: 1.5; color: #333; }
         .input-group { display: flex; gap: 10px; }
         input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { background: #e62b1e; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button { background: #1da1f2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button:disabled { background: #ccc; }
         .status { font-size: 0.9em; color: #666; margin-bottom: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>TED Talk RAG Assistant</h1>
+        <h1>Politics Tweet Assistant</h1>
         <div class="status">System status: <a href="/api/stats" target="_blank">Active</a></div>
-        <div id="chat-box">Enter your question below...</div>
+        <div id="chat-box">Ask questions about politics tweets...</div>
         <div class="input-group">
-            <input type="text" id="user-input" placeholder="e.g., Recommend a talk on climate change" onkeypress="if(event.key==='Enter') sendMessage()">
+            <input type="text" id="user-input" placeholder="e.g., What are politicians saying about climate change?" onkeypress="if(event.key==='Enter') sendMessage()">
             <button id="send-btn" onclick="sendMessage()">Ask</button>
         </div>
     </div>
@@ -149,7 +150,7 @@ CHAT_UI_TEMPLATE = """
             const query = input.value.trim();
             if (!query) return;
 
-            box.innerHTML = "<i>Searching TED dataset and generating answer...</i>";
+            box.innerHTML = "<i>Searching politics tweets and generating answer...</i>";
             btn.disabled = true;
 
             try {
