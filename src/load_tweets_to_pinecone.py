@@ -34,7 +34,7 @@ def main() -> None:
     
     # Constants - using the only available embedding model
     EMBEDDING_MODEL = "RPRTHPB-text-embedding-3-small"
-    EMBEDDING_DIMENSIONS = 1536  # This model produces 1536-dimensional embeddings
+    EMBEDDING_DIMENSIONS = 1024  # Using 1024 dimensions to match 'politics' index
     
     # Check if index exists and has correct dimensions
     try:
@@ -88,11 +88,24 @@ def main() -> None:
     
     try:
         with conn.cursor() as cursor:
-            # Query for the specific fields we need
+            # Query for Kamala Harris and Barack Obama tweets (100 each, earliest first)
             query = """
-                SELECT tweet_id, account_id, author_name, author_screen_name, text, text_len
-                FROM tweets 
-                LIMIT 10
+                (
+                    SELECT tweet_id, account_id, author_name, author_screen_name, text, text_len, created_at
+                    FROM tweets 
+                    WHERE author_screen_name IN ('KamalaHarris', 'BarackObama')
+                    AND author_screen_name = 'KamalaHarris'
+                    ORDER BY created_at ASC
+                    LIMIT 100
+                )
+                UNION ALL
+                (
+                    SELECT tweet_id, account_id, author_name, author_screen_name, text, text_len, created_at
+                    FROM tweets 
+                    WHERE author_screen_name = 'BarackObama'
+                    ORDER BY created_at ASC
+                    LIMIT 100
+                )
             """
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -103,14 +116,15 @@ def main() -> None:
             vectors_to_upsert = []
             
             for row in rows:
-                tweet_id, account_id, author_name, author_screen_name, text, text_len = row
+                tweet_id, account_id, author_name, author_screen_name, text, text_len, created_at = row
                 
                 print(f"Processing tweet {tweet_id} by {author_screen_name}...")
                 
                 # Generate embedding for the tweet text
                 emb_response = client.embeddings.create(
                     input=text,
-                    model=EMBEDDING_MODEL
+                    model=EMBEDDING_MODEL,
+                    dimensions=1024
                 )
                 embedding = emb_response.data[0].embedding
                 

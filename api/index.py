@@ -60,7 +60,7 @@ def chat():
         return jsonify({"error": "No question provided"}), 400
 
     # 1. Embed Question
-    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL, dimensions=1024)
+    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL)
     query_vector = emb_res.data[0].embedding
 
     # 2. Retrieve from Pinecone
