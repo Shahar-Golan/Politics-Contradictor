@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from pinecone import Pinecone
 from openai import OpenAI
 import os
@@ -11,6 +12,7 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for React frontend
 
 # --- Configuration ---
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
@@ -40,11 +42,6 @@ You may add additional clarifications (e.g., response style), but you must keep 
 
 # --- Routes ---
 
-@app.route('/')
-def home():
-    """Renders the landing page with the integrated Chat UI."""
-    return render_template_string(CHAT_UI_TEMPLATE)
-
 @app.route('/api/stats', methods=['GET'])
 def stats():
     """Returns system parameters for automated grading."""
@@ -63,7 +60,7 @@ def chat():
         return jsonify({"error": "No question provided"}), 400
 
     # 1. Embed Question
-    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL)
+    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL, dimensions=1024)
     query_vector = emb_res.data[0].embedding
 
     # 2. Retrieve from Pinecone
@@ -112,67 +109,6 @@ def chat():
     ])
     
     return jsonify(response_data)
-
-# --- Integrated UI Template ---
-CHAT_UI_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Politics Tweet Assistant</title>
-    <style>
-        body { font-family: sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; width: 100%; max-width: 700px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #1da1f2; margin-top: 0; }
-        #chat-box { border: 1px solid #ddd; border-radius: 8px; padding: 15px; min-height: 200px; margin: 20px 0; background: #fafafa; white-space: pre-wrap; line-height: 1.5; color: #333; }
-        .input-group { display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        button { background: #1da1f2; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #ccc; }
-        .status { font-size: 0.9em; color: #666; margin-bottom: 5px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Politics Tweet Assistant</h1>
-        <div class="status">System status: <a href="/api/stats" target="_blank">Active</a></div>
-        <div id="chat-box">Ask questions about politics tweets...</div>
-        <div class="input-group">
-            <input type="text" id="user-input" placeholder="e.g., What are politicians saying about climate change?" onkeypress="if(event.key==='Enter') sendMessage()">
-            <button id="send-btn" onclick="sendMessage()">Ask</button>
-        </div>
-    </div>
-
-    <script>
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const box = document.getElementById('chat-box');
-            const btn = document.getElementById('send-btn');
-            const query = input.value.trim();
-            if (!query) return;
-
-            box.innerHTML = "<i>Searching politics tweets and generating answer...</i>";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/prompt', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: query })
-                });
-                const data = await res.json();
-                
-                // We extract ONLY the "response" field for the UI
-                box.innerText = data.response; 
-            } catch (err) {
-                box.innerText = "Error: Could not connect to the API.";
-            } finally {
-                btn.disabled = false;
-            }
-        }
-    </script>
-</body>
-</html>
-"""
 
 if __name__ == '__main__':
     app.run(debug=True, port=3000, use_reloader=False)

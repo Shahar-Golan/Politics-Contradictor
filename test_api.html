@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    
+    <button onclick="testStats()">Test /api/stats</button>
+    <button onclick="testPrompt()">Test /api/prompt</button>
+    <button onclick="testBoth()">Test Both</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (isError ? 'error' : 'success');
+            div.innerHTML = '<strong>' + new Date().toLocaleTimeString() + '</strong><br>' + message;
+            document.getElementById('results').prepend(div);
+        }
+
+        async function testStats() {
+            try {
+                log('Testing GET /api/stats...');
+                const response = await fetch(`${API_URL}/stats`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('✅ /api/stats SUCCESS<pre>' + JSON.stringify(data, null, 2) + '</pre>');
+            } catch (error) {
+                log('❌ /api/stats FAILED<pre>' + error.message + '\n' + error.stack + '</pre>', true);
+            }
+        }
+
+        async function testPrompt() {
+            try {
+                log('Testing POST /api/prompt...');
+                const response = await fetch(`${API_URL}/prompt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question: 'test' })
+                });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}\n${text}`);
+                }
+                
+                const data = await response.json();
+                log('✅ /api/prompt SUCCESS<pre>Response length: ' + JSON.stringify(data.response).length + ' chars</pre>');
+            } catch (error) {
+                log('❌ /api/prompt FAILED<pre>' + error.message + '</pre>', true);
+            }
+        }
+
+        async function testBoth() {
+            await testStats();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testPrompt();
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            log('Page loaded. Click buttons to test API endpoints.');
+            log('Expected backend: ' + API_URL);
+        };
+    </script>
+</body>
+</html>
