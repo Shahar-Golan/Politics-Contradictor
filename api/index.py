@@ -17,7 +17,7 @@ CORS(app)  # Enable CORS for React frontend
 # --- Configuration ---
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "politics-tweets")
+PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "politics")
 
 EMBEDDING_MODEL = "RPRTHPB-text-embedding-3-small"
 GPT_MODEL = "RPRTHPB-gpt-5-mini"
