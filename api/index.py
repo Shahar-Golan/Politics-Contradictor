@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pinecone import Pinecone
 from openai import OpenAI
@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 from pathlib import Path
 from collections import OrderedDict
 
-# Load .env locally; Vercel will use its own Environment Variables
+# Load .env locally; Render will use its own Environment Variables
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend/dist', static_url_path='/')
 CORS(app)  # Enable CORS for React frontend
 
 # --- Configuration ---
@@ -110,5 +110,16 @@ def chat():
     
     return jsonify(response_data)
 
+# Serve React frontend for all non-API routes
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
 if __name__ == '__main__':
-    app.run(debug=True, port=3000, use_reloader=False)
+    # Use the PORT environment variable if available, otherwise default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
