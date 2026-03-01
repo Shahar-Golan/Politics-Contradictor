@@ -24,6 +24,7 @@ GPT_MODEL = "RPRTHPB-gpt-5-mini"
 TOP_K = 10
 CHUNK_SIZE = 1024
 OVERLAP = 0.2
+EMBEDDING_DIMENSIONS = 1024  # Match Pinecone index dimensions
 
 # Initialize Clients
 pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -60,7 +61,7 @@ def chat():
         return jsonify({"error": "No question provided"}), 400
 
     # 1. Embed Question
-    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL)
+    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL, dimensions=EMBEDDING_DIMENSIONS)
     query_vector = emb_res.data[0].embedding
 
     # 2. Retrieve from Pinecone

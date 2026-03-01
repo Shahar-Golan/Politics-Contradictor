@@ -1,8 +1,8 @@
 import requests
 import json
 
-url = "https://ted-system.vercel.app/api/prompt"
-payload = {"question": "I’m looking for a TED talk about climate change and what individuals can do in their daily lives. Which talk would you recommend?"
+url = "https://politics-contradictor.onrender.com/api/prompt"
+payload = {"question": "What did Kamala Harris tweet about?"
 }
 try:
     print(f"Sending request to {url}...")
