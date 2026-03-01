@@ -5,3 +5,4 @@ pandas
 pinecone
 python-dotenv
 tiktoken
+gunicorn
