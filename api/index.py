@@ -38,15 +38,16 @@ SYSTEM_PROMPT = """You are a source of truth for what public figures have actual
 
 Guidelines:
 - Answer questions using ONLY the tweet content and metadata provided in the context
-- Provide direct quotes when available to show what public figures actually said
-- Attribute all statements clearly to the public figure who made them (include their name and handle)
+- If the provided tweets are from or about the public figure in the question, use them to answer - even if they don't mention every specific keyword from the question
+- Provide direct quotes to show what public figures actually said
+- Attribute all statements clearly to the public figure who made them (include their name)
 - If multiple public figures have addressed the topic, present their different perspectives
+- Analyze patterns, sentiment, themes, or contradictions you observe in the provided tweets
 - Do NOT use any external knowledge or information not in the provided tweets
-- If the answer cannot be found in the provided context, respond: "I don't have tweets from public figures addressing this topic."
-- You may analyze and summarize patterns, sentiment, or themes across the provided tweets
-- Always ground your response in the actual tweet content provided
+- If the provided tweets are not relevant to the question, respond: "I don't have tweets from public figures addressing this topic."
+- Be helpful: if the tweets partially address the question, provide what information is available
 
-Your goal is to help users understand what public figures have publicly stated, not to interpret or add external information."""
+Your goal is to help users understand what public figures have publicly stated, based on the available tweet evidence."""
 
 # --- Routes ---
 
@@ -79,13 +80,14 @@ def chat():
     for match in search_results['matches']:
         meta = match['metadata']
         score = match['score']
+        text = meta.get('text', '')
         context_list.append({
-            "tweet_id": meta.get('tweet_id'),
+            "tweet_id": match['id'],  # Use the vector ID as tweet_id
             "account_id": meta.get('account_id'),
             "author_name": meta.get('author_name'),
-            "author_screen_name": meta.get('author_screen_name'),
-            "text": meta.get('text'),
-            "text_len": meta.get('text_len'),
+            "text": text,
+            "text_len": len(text),  # Calculate from actual text
+            "created_at": meta.get('created_at'),
             "score": score
         })
 
@@ -95,7 +97,7 @@ def chat():
     # 5. Build Augmented Prompt
     context_text = ""
     for item in final_context_list:
-        context_text += f"Author: {item['author_name']} (@{item['author_screen_name']})\nTweet: {item['text']}\nLength: {item['text_len']} chars\n\n"
+        context_text += f"Author: {item['author_name']}\nDate: {item['created_at']}\nTweet: {item['text']}\n\n"
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
