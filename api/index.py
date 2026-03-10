@@ -21,7 +21,7 @@ PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "politics")
 
 EMBEDDING_MODEL = "RPRTHPB-text-embedding-3-small"
 GPT_MODEL = "RPRTHPB-gpt-5-mini"
-TOP_K = 10
+TOP_K = 15
 CHUNK_SIZE = 1024
 OVERLAP = 0.2
 EMBEDDING_DIMENSIONS = 1024  # Match Pinecone index dimensions
@@ -34,12 +34,19 @@ client = OpenAI(
     base_url="https://api.llmod.ai/v1"
 )
 
-SYSTEM_PROMPT = """You are a Politics Tweet assistant that answers questions strictly and only based on the politics tweet dataset context provided to you (tweet metadata and content).
-You must not use any external knowledge, the open internet, or information that is not explicitly contained in the retrieved context.
-If the answer cannot be determined from the provided context, respond: "I don't know based on the provided tweet data."
-Always explain your answer using the given context, quoting or paraphrasing the relevant tweets or metadata when helpful.
-You can analyze sentiment, themes, authors, and content patterns from the provided tweets.
-You may add additional clarifications (e.g., response style), but you must keep the above constraints."""
+SYSTEM_PROMPT = """You are a source of truth for what public figures have actually stated on social media. Your role is to provide accurate information about public figures' opinions, statements, and positions based strictly on their tweets.
+
+Guidelines:
+- Answer questions using ONLY the tweet content and metadata provided in the context
+- Provide direct quotes when available to show what public figures actually said
+- Attribute all statements clearly to the public figure who made them (include their name and handle)
+- If multiple public figures have addressed the topic, present their different perspectives
+- Do NOT use any external knowledge or information not in the provided tweets
+- If the answer cannot be found in the provided context, respond: "I don't have tweets from public figures addressing this topic."
+- You may analyze and summarize patterns, sentiment, or themes across the provided tweets
+- Always ground your response in the actual tweet content provided
+
+Your goal is to help users understand what public figures have publicly stated, not to interpret or add external information."""
 
 # --- Routes ---
 
@@ -82,8 +89,8 @@ def chat():
             "score": score
         })
 
-    # 4. Final Context List (Top 5)
-    final_context_list = context_list[:5]
+    # 4. Final Context List (Top 7 for better coverage)
+    final_context_list = context_list[:7]
 
     # 5. Build Augmented Prompt
     context_text = ""
