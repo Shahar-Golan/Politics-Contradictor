@@ -6,3 +6,5 @@ pinecone
 python-dotenv
 tiktoken
 gunicorn
+psycopg2-binary
+tqdm
