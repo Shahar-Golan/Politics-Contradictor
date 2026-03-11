@@ -10,6 +10,7 @@ from collections import OrderedDict
 # Add src directory to path for agent_tools import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from agent_tools.vector_search import vector_search
+from agent.react_agent import run_agent
 
 # Load .env locally; Render will use its own Environment Variables
 env_path = Path(__file__).parent.parent / ".env"
@@ -129,6 +130,45 @@ def chat():
     ])
     
     return jsonify(response_data)
+
+
+@app.route('/api/agent/query', methods=['POST'])
+def agent_query():
+    """
+    Agentic RAG endpoint - uses ReAct agent with LLM reasoning.
+    Returns comprehensive response with thought process and sources.
+    """
+    data = request.json
+    user_query = data.get('query', '')
+    
+    if not user_query:
+        return jsonify({"error": "No query provided"}), 400
+    
+    # Run ReAct agent with LLM mode
+    result = run_agent(
+        user_query, 
+        max_iterations=5, 
+        verbose=False, 
+        use_llm=True
+    )
+    
+    if not result['success']:
+        return jsonify({"error": "Agent failed to process query"}), 500
+    
+    # Format response
+    response_data = OrderedDict([
+        ("answer", result['final_answer']),
+        ("mode", result['mode']),
+        ("iterations", result['iterations']),
+        ("thought_process", result['thoughts']),
+        ("actions_taken", result['actions']),
+        ("tweets_found", result['tweets_found']),
+        ("tweets_used", result['tweets']),
+        ("urls_analyzed", result['scraped_content'])
+    ])
+    
+    return jsonify(response_data)
+
 
 # Serve React frontend for all non-API routes
 @app.route('/', defaults={'path': ''})
