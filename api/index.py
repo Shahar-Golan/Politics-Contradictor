@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from pinecone import Pinecone
 from openai import OpenAI
 import os
+import sys
 from dotenv import load_dotenv
 from pathlib import Path
 from collections import OrderedDict
+
+# Add src directory to path for agent_tools import
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from agent_tools.vector_search import vector_search
 
 # Load .env locally; Render will use its own Environment Variables
 env_path = Path(__file__).parent.parent / ".env"
@@ -15,39 +19,39 @@ app = Flask(__name__, static_folder='../frontend/dist', static_url_path='/')
 CORS(app)  # Enable CORS for React frontend
 
 # --- Configuration ---
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "politics")
+BASE_URL = os.environ.get("BASE_URL", "https://api.llmod.ai/v1")
 
-EMBEDDING_MODEL = "RPRTHPB-text-embedding-3-small"
 GPT_MODEL = "RPRTHPB-gpt-5-mini"
 TOP_K = 15
 CHUNK_SIZE = 1024
 OVERLAP = 0.2
-EMBEDDING_DIMENSIONS = 1024  # Match Pinecone index dimensions
 
-# Initialize Clients
-pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index(PINECONE_INDEX_NAME)
+# Initialize OpenAI Client (for GPT responses)
 client = OpenAI(
     api_key=OPENAI_API_KEY,
-    base_url="https://api.llmod.ai/v1"
+    base_url=BASE_URL
 )
 
-SYSTEM_PROMPT = """You are a source of truth for what public figures have actually stated on social media. Your role is to provide accurate information about public figures' opinions, statements, and positions based strictly on their tweets.
+SYSTEM_PROMPT = """You are a source of truth for what public figures have actually stated on social media. Your role is to provide accurate, concise information about public figures' opinions and statements based strictly on their tweets.
+
+Response Format:
+- Present the 3 most relevant tweets in chronological order (oldest to newest)
+- For each tweet include: Author name, date, and direct quote or key statement
+- Keep it concise - avoid repeating similar points
+- omit urls that appear in the tweet's text
+- If other public figures in the context have relevant perspectives, briefly mention them at the end
+- Identify patterns or contradictions only if clearly evident
+- Use bullet points or short paragraphs for clarity
 
 Guidelines:
-- Answer questions using ONLY the tweet content and metadata provided in the context
-- If the provided tweets are from or about the public figure in the question, use them to answer - even if they don't mention every specific keyword from the question
-- Provide direct quotes to show what public figures actually said
-- Attribute all statements clearly to the public figure who made them (include their name)
-- If multiple public figures have addressed the topic, present their different perspectives
-- Analyze patterns, sentiment, themes, or contradictions you observe in the provided tweets
-- Do NOT use any external knowledge or information not in the provided tweets
-- If the provided tweets are not relevant to the question, respond: "I don't have tweets from public figures addressing this topic."
-- Be helpful: if the tweets partially address the question, provide what information is available
+- Answer using ONLY the tweet content and metadata provided
+- Provide direct quotes when available
+- Clearly attribute statements to the public figure who made them
+- Do NOT use external knowledge beyond the provided tweets
+- If tweets are not relevant to the question: "I don't have tweets from public figures addressing this topic."
 
-Your goal is to help users understand what public figures have publicly stated, based on the available tweet evidence."""
+Keep responses focused and readable."""
 
 # --- Routes ---
 
@@ -68,35 +72,41 @@ def chat():
     if not user_query:
         return jsonify({"error": "No question provided"}), 400
 
-    # 1. Embed Question
-    emb_res = client.embeddings.create(input=user_query, model=EMBEDDING_MODEL, dimensions=EMBEDDING_DIMENSIONS)
-    query_vector = emb_res.data[0].embedding
+    # 1. Search for relevant tweets using vector_search tool
+    search_result = vector_search(user_query, top_k=TOP_K)
+    
+    if not search_result["success"]:
+        return jsonify({"error": f"Search failed: {search_result['error']}"}), 500
 
-    # 2. Retrieve from Pinecone
-    search_results = index.query(vector=query_vector, top_k=TOP_K, include_metadata=True)
-
-    # 3. Process tweets (no deduplication needed since each tweet is unique)
+    # 2. Process tweets into context list
     context_list = []
-    for match in search_results['matches']:
+    for match in search_result['results']:
         meta = match['metadata']
         score = match['score']
         text = meta.get('text', '')
         context_list.append({
-            "tweet_id": match['id'],  # Use the vector ID as tweet_id
+            "tweet_id": match['id'],
             "account_id": meta.get('account_id'),
             "author_name": meta.get('author_name'),
             "text": text,
-            "text_len": len(text),  # Calculate from actual text
+            "text_len": len(text),
             "created_at": meta.get('created_at'),
             "score": score
         })
 
-    # 4. Final Context List (Top 7 for better coverage)
+    # 3. Final Context List (Top 7 for better coverage)
     final_context_list = context_list[:7]
+    
+    # 4. Sort by date for chronological presentation (oldest first)
+    final_context_list_sorted = sorted(
+        final_context_list, 
+        key=lambda x: x.get('created_at', ''), 
+        reverse=False
+    )
 
-    # 5. Build Augmented Prompt
+    # 5. Build Augmented Prompt (using chronologically sorted context)
     context_text = ""
-    for item in final_context_list:
+    for item in final_context_list_sorted:
         context_text += f"Author: {item['author_name']}\nDate: {item['created_at']}\nTweet: {item['text']}\n\n"
 
     messages = [
@@ -111,7 +121,7 @@ def chat():
     # 7. Ordered JSON Output (Required by assignment)
     response_data = OrderedDict([
         ("response", final_answer),
-        ("context", final_context_list),
+        ("context", final_context_list_sorted),
         ("Augmented_prompt", {
             "System": SYSTEM_PROMPT,
             "User": f"Context:\n{context_text}\n\nQuestion: {user_query}"

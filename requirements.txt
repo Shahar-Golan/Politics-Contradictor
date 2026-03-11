@@ -8,3 +8,5 @@ tiktoken
 gunicorn
 psycopg2-binary
 tqdm
+requests
+beautifulsoup4
