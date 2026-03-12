@@ -2,6 +2,21 @@ import { useState } from 'react';
 import { chatAPI } from '../services/api';
 import './ChatInterface.css';
 
+// Function to parse markdown and convert URLs to clickable links
+function parseResponse(text) {
+  if (!text) return '';
+  
+  let html = text
+    // Convert **bold** to <strong>bold</strong>
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Convert URLs to clickable links
+    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="tweet-link">$1</a>')
+    // Convert line breaks
+    .replace(/\n/g, '<br/>');
+  
+  return html;
+}
+
 function ChatInterface() {
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState('Ask questions about political figures\' tweets...');
@@ -55,7 +70,10 @@ function ChatInterface() {
       </div>
 
       <div className="chat-box">
-        <div className="response-text">{response}</div>
+        <div 
+          className="response-text" 
+          dangerouslySetInnerHTML={{ __html: parseResponse(response) }}
+        />
         
         {agentData && (
           <div className="agent-info">
@@ -87,6 +105,26 @@ function ChatInterface() {
                   ))}
                 </ul>
               </details>
+            )}
+            
+            {agentData.urls_analyzed && agentData.urls_analyzed.length > 0 && (
+              <div className="sources-analyzed">
+                <h4>🔗 Sources Analyzed:</h4>
+                {agentData.urls_analyzed.map((source, i) => (
+                  <div key={i} className="source-item">
+                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="source-link">
+                      {source.title || source.url}
+                    </a>
+                    <div className="source-meta">
+                      <span>📊 {source.word_count} words</span>
+                      {source.statistics?.has_numbers && <span>📈 Contains statistics</span>}
+                    </div>
+                    {source.content_preview && (
+                      <p className="source-preview">{source.content_preview}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

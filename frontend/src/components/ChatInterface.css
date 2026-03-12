@@ -131,6 +131,23 @@ h1 {
   margin-bottom: 10px;
 }
 
+/* Tweet Links Styling */
+.response-text .tweet-link {
+  color: #1da1f2;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid #1da1f2;
+  transition: all 0.2s ease;
+}
+
+.response-text .tweet-link:hover {
+  color: #0d8bd9;
+  border-bottom-color: #0d8bd9;
+  background: #f0f8ff;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
 /* Reasoning Steps */
 .reasoning-steps, .actions-taken {
   margin-top: 10px;
@@ -166,4 +183,69 @@ h1 {
 
 .actions-taken li strong {
   color: #1da1f2;
+}
+
+/* Sources Analyzed Section */
+.sources-analyzed {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f9fcff;
+  border: 1px solid #d1e8f5;
+  border-radius: 6px;
+}
+
+.sources-analyzed h4 {
+  margin: 0 0 12px 0;
+  color: #1da1f2;
+  font-size: 16px;
+}
+
+.source-item {
+  background: white;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  transition: box-shadow 0.2s ease;
+}
+
+.source-item:hover {
+  box-shadow: 0 2px 8px rgba(29, 161, 242, 0.1);
+}
+
+.source-link {
+  color: #1da1f2;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  display: block;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.source-meta {
+  display: flex;
+  gap: 15px;
+  font-size: 13px;
+  color: #657786;
+  margin-bottom: 8px;
+}
+
+.source-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.source-preview {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.5;
+  margin: 8px 0 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
 }
