@@ -11,6 +11,7 @@ from collections import OrderedDict
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from agent_tools.vector_search import vector_search
 from agent.react_agent import run_agent
+from graphs.query_graph import run_query
 
 # Load .env locally; Render will use its own Environment Variables
 env_path = Path(__file__).parent.parent / ".env"
@@ -168,6 +169,36 @@ def agent_query():
     ])
     
     return jsonify(response_data)
+
+
+@app.route('/api/v2/query', methods=['POST'])
+def graph_query():
+    """
+    LangGraph multi-agent endpoint.
+    Routes queries through: page_lookup → router → tweet_agent / news_agent / both.
+    """
+    data = request.json
+    user_query = data.get('query', '')
+
+    if not user_query:
+        return jsonify({"error": "No query provided"}), 400
+
+    try:
+        result = run_query(user_query)
+
+        response_data = OrderedDict([
+            ("answer", result.get("answer", "")),
+            ("route", result.get("route", "")),
+            ("route_reason", result.get("route_reason", "")),
+            ("agent_used", result.get("agent_used", "")),
+            ("tweets", result.get("tweets", [])),
+            ("articles", result.get("articles", [])),
+        ])
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        return jsonify({"error": f"Graph query failed: {str(e)}"}), 500
 
 
 # Serve React frontend for all non-API routes

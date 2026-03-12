@@ -1,4 +1,4 @@
-add# Politics-Contradictor — System Architecture
+# Politics-Contradictor — System Architecture
 
 ## Overview
 
@@ -126,6 +126,13 @@ article_topics
   confidence          FLOAT
   PRIMARY KEY (doc_id, topic_id)
 
+NOTE: Topic Extractor also updates existing records for faster RAG filtering:
+  - Adds `topics TEXT[]` column to `tweets` table
+  - Adds `topics TEXT[]` column to `news_articles` table
+  - Updates Pinecone vector metadata with `topics: ["healthcare", "economy", ...]`
+  This allows Tweet Agent / News Agent to do filtered vector search:
+    index.query(vector=emb, filter={"topics": {"$in": ["healthcare"]}})
+
 PHASE 3 — Contradiction Detection
 ────────────────────────────────────────────────────────────────
 contradictions
@@ -195,64 +202,105 @@ Both use embedding model `RPRTHPB-text-embedding-3-small` via `https://api.llmod
 Politics-Contradictor/
 ├── src/
 │   ├── graphs/                         # LangGraph definitions
-│   │   ├── query_graph.py              # System B — interactive query
-│   │   └── background_graph.py         # System A — daily pipeline
+│   │   ├── query_graph.py              # System B — interactive query [DONE]
+│   │   └── background_graph.py         # System A — daily pipeline [PLANNED]
 │   ├── agents/                         # Agent node implementations
-│   │   ├── page_lookup.py              # Check cached figure pages
-│   │   ├── router.py                   # Classify and route queries
-│   │   ├── tweet_agent.py              # RAG over tweets
-│   │   ├── news_agent.py               # RAG over news articles
-│   │   ├── ingestion_agent.py          # Load new data
-│   │   ├── topic_extractor.py          # Tag topics
-│   │   ├── contradiction_finder.py     # Detect contradictions
-│   │   └── page_builder.py             # Generate figure pages
+│   │   ├── page_lookup.py              # Check cached figure pages [DONE — stub]
+│   │   ├── router.py                   # Classify and route queries [DONE]
+│   │   ├── tweet_agent.py              # RAG over tweets [DONE]
+│   │   ├── news_agent.py               # RAG over news articles [DONE]
+│   │   ├── ingestion_agent.py          # Load new data [PLANNED]
+│   │   ├── topic_extractor.py          # Tag topics [PLANNED]
+│   │   ├── contradiction_finder.py     # Detect contradictions [PLANNED]
+│   │   └── page_builder.py             # Generate figure pages [PLANNED]
 │   ├── agent_tools/                    # Shared tools
-│   │   ├── vector_search.py            # Pinecone search (tweets + news)
-│   │   ├── web_scraper.py              # URL content extraction
-│   │   └── url_extractor.py            # Extract URLs from text
-│   ├── agent/                          # Legacy ReAct agent (keep for reference)
+│   │   ├── vector_search.py            # Pinecone search (tweets) [DONE]
+│   │   ├── news_search.py              # Pinecone search (news articles) [DONE]
+│   │   ├── web_scraper.py              # URL content extraction [DONE]
+│   │   └── url_extractor.py            # Extract URLs from text [DONE]
+│   ├── agent/                          # Legacy ReAct agent (kept for backward compatibility)
 │   │   ├── react_agent.py
 │   │   ├── prompts.py
 │   │   └── llm_interface.py
-│   └── orchestrator.py                 # Cron entrypoint for System A
+│   ├── load_news_to_supabase_and_pinecone.py  # Data loader script
+│   ├── load_tweets_to_pinecone.py             # Tweet loader script
+│   ├── prep_data.py                           # Data preparation
+│   └── read_first_tweet.py                    # Utility
 ├── api/
-│   └── index.py                        # Flask API
-├── frontend/                           # React UI
+│   ├── index.py                        # Flask API (all endpoints) [DONE]
+│   └── test_request.py                 # Legacy API test
+├── frontend/                           # React UI (Vite)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ChatInterface.jsx       # Main chat UI [DONE]
+│   │   │   └── ChatInterface.css       # Styles [DONE]
+│   │   ├── services/
+│   │   │   └── api.js                  # API client [DONE]
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+├── test/                               # Tests
+│   ├── test_endpoints.py               # Unit tests for all API endpoints [DONE]
+│   ├── check_all_indexes.py            # Pinecone index inspection
+│   ├── inspect_supabase_db.py          # Supabase data inspection
+│   ├── test_pinecone.py                # Pinecone connectivity test
+│   └── ...                             # Other test utilities
 ├── .env                                # API keys and config
-├── requirements.txt
-└── ARCHITECTURE.md                     # This file
+├── requirements.txt                    # Python dependencies
+├── ARCHITECTURE.md                     # This file
+└── SETUP.md                           # How to run backend and frontend
 ```
 
 ---
 
 ## Implementation Phases
 
-### Phase 1 — Interactive Query Graph (System B)
+### Phase 1 — Interactive Query Graph (System B) [COMPLETED]
 
-Build the LangGraph query system with router + tweet_agent + news_agent.
+Built the LangGraph query system with router + tweet_agent + news_agent.
 
-- `src/graphs/query_graph.py` — StateGraph with router, page_lookup, tweet_agent, news_agent nodes
-- `src/agents/router.py` — LLM classification prompt
-- `src/agents/tweet_agent.py` — search `politics` index, synthesize
-- `src/agents/news_agent.py` — search `politics-news` index, synthesize
-- `src/agents/page_lookup.py` — stub (returns "insufficient" until Phase 4)
-- Update `api/index.py` — new `/api/v2/query` endpoint using QueryGraph
-- Update frontend — display which agent handled the query
+**Planned items — completed:**
 
-### Phase 2 — Topic Extraction
+- `src/graphs/query_graph.py` — StateGraph with 6 nodes: page_lookup, page_answer, router, tweet_agent, news_agent, both_agents. Conditional edges route based on page_found and route classification.
+- `src/agents/router.py` — LLM-based query classifier using ChatOpenAI. Outputs JSON with `route` ("tweet_agent" | "news_agent" | "both") and `reason`.
+- `src/agents/tweet_agent.py` — Searches `politics` Pinecone index via `vector_search`, synthesizes answer with chronologically sorted tweets.
+- `src/agents/news_agent.py` — Searches `politics-news` Pinecone index via `news_search`, synthesizes answer citing media outlet, state, and date.
+- `src/agents/page_lookup.py` — Stub returning `{"found": False}` until Phase 4 builds the `figure_pages` table.
+- `api/index.py` — Added `POST /api/v2/query` endpoint using `run_query()` from the QueryGraph. Also fixed a syntax error in the existing agent endpoint.
+- Frontend — Redesigned UI with sidebar layout, 3-mode selector (Graph / Agent / RAG), routing metadata display, and expandable source sections for tweets and articles.
+
+**Additional items — not in original plan:**
+
+- `src/agent_tools/news_search.py` — Created a dedicated Pinecone search tool for the `politics-news` index (mirrors `vector_search.py` structure). This was needed because news and tweets live in separate Pinecone indexes.
+- `frontend/src/services/api.js` — Added `sendGraphQuery()` method for the new `/api/v2/query` endpoint.
+- `test/test_endpoints.py` — Unit tests covering all 4 API endpoints (9 tests total: `GET /api/stats`, `POST /api/prompt`, `POST /api/agent/query`, `POST /api/v2/query` with tweet/news/both routing, plus empty-input validation for each POST endpoint). All 9 tests pass.
+- `SETUP.md` — Setup and run instructions for backend and frontend, including API endpoint reference and example curl request.
+- Frontend full redesign — dark theme sidebar layout (not just "display which agent handled the query" as planned). Includes: mode-specific loading spinners, clickable example queries on empty state, expandable source tweets (blue accent) and source articles (green accent), color-coded route badges, responsive mobile layout.
+- `frontend/src/index.css` — Cleaned up Vite default dark/light mode styles that were conflicting with the component CSS.
+
+**Verified with:**
+
+- End-to-end graph test: ran `run_query()` directly for 3 query types, confirmed correct routing (tweet_agent, news_agent, both) with proper tweet/article counts.
+- API integration test: `test/test_endpoints.py` — 9/9 passed against live local server.
+- Frontend build: `npm run build` succeeds with no errors.
+
+### Phase 2 — Topic Extraction [NOT STARTED]
 
 - Create `topics`, `tweet_topics`, `article_topics` tables in Supabase
 - Curate initial topic taxonomy (~20 topics)
 - `src/agents/topic_extractor.py` — LLM tags records with topics
 - Partial `src/graphs/background_graph.py` — ingestion → topic extraction
 
-### Phase 3 — Contradiction Detection
+### Phase 3 — Contradiction Detection [NOT STARTED]
 
 - Create `contradictions` table in Supabase
 - `src/agents/contradiction_finder.py` — compare tweets vs news per figure/topic
 - Extend background graph — add contradiction node
 
-### Phase 4 — Figure Pages
+### Phase 4 — Figure Pages [NOT STARTED]
 
 - Create `figure_pages` table in Supabase
 - `src/agents/page_builder.py` — generate per-figure summary pages
@@ -260,7 +308,7 @@ Build the LangGraph query system with router + tweet_agent + news_agent.
 - Complete background graph — full pipeline
 - Frontend — per-figure profile pages with tabs (overview, news, contradictions)
 
-### Phase 5 — Deployment and Automation
+### Phase 5 — Deployment and Automation [NOT STARTED]
 
 - `src/orchestrator.py` — cron entrypoint for daily pipeline
 - Deploy to Render (web service + background worker)

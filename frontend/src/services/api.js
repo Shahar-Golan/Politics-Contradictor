@@ -15,6 +15,11 @@ export const chatAPI = {
     return response.data;
   },
   
+  async sendGraphQuery(query) {
+    const response = await axios.post(`${API_BASE_URL}/v2/query`, { query });
+    return response.data;
+  },
+
   async getStats() {
     const response = await axios.get(`${API_BASE_URL}/stats`);
     return response.data;
