@@ -24,11 +24,12 @@ Returns student details.
 ```json
 {
   "group_batch_order_number": "{batch#}_{order#}", // from presentation list
-  "team_name": "Your Team Name",
+  "team_name": "שחר גולן + תומר פרץ + אייל קוטליק",
   "students": [
-    { "name": "Student A", "email": "a@..." },
-    { "name": "Student B", "email": "b@..." },
-    { "name": "Student C", "email": "c@..." }
+    
+    { "name": "שחר גולן", "email": "shahar.golan@campus.technion.ac.il" },
+    { "name": "תומר פרץ", "email": "tomer.perez@campus.technion.ac.il" },
+    { "name": "אייל קוטליק", "email": "eyal.kotlik@campus.technion.ac.il" }
   ]
 }
 ```
@@ -53,12 +54,13 @@ Returns agent meta + how to use it.
   },
   "prompt_examples": [
     {
-      "prompt": "Example prompt 1…",
+      "prompt": "What does Hilary Clinton saying about nuclear weapon?",
       "full_response": "Full response your agent returns…",
       "steps": [full list of steps, see below]
     }
   ]
 }
+# another example: What does Jow Biden opinion about immigration
 ```
 
 ### C) GET /api/model_architecture

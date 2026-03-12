@@ -3,6 +3,7 @@ from flask_cors import CORS
 from openai import OpenAI
 import os
 import sys
+import json
 from dotenv import load_dotenv
 from pathlib import Path
 from collections import OrderedDict
@@ -55,6 +56,76 @@ Guidelines:
 Keep responses focused and readable."""
 
 # --- Routes ---
+
+@app.route('/api/team_info', methods=['GET'])
+def team_info():
+    """Returns student details for the team."""
+    return jsonify({
+        "group_batch_order_number": "1_1",  # Update with actual batch and order number
+        "team_name": "שחר גולן + תומר פרץ + אייל קוטליק",
+        "students": [
+            {"name": "שחר גולן", "email": "shahar.golan@campus.technion.ac.il"},
+            {"name": "תומר פרץ", "email": "tomer.perez@campus.technion.ac.il"},
+            {"name": "אייל קוטליק", "email": "eyal.kotlik@campus.technion.ac.il"}
+        ]
+    })
+
+@app.route('/api/agent_info', methods=['GET'])
+def agent_info():
+    """Returns agent meta information and usage guidelines."""
+    
+    # Load prompt examples from file
+    examples_path = Path(__file__).parent.parent / "test" / "prompt_examples.json"
+    try:
+        with open(examples_path, 'r', encoding='utf-8') as f:
+            prompt_examples = json.load(f)
+    except Exception as e:
+        prompt_examples = []
+    
+    return jsonify({
+        "description": "X-Platform Intelligence Agent - A ReAct-based (Reasoning + Acting) agent that analyzes tweets from public figures and investigates linked content to provide comprehensive, evidence-based answers.",
+        "purpose": "To help users understand what public figures have stated on social media by intelligently searching tweets, scraping linked articles for additional context, and synthesizing information with proper attribution and citations.",
+        "architecture": {
+            "framework": "ReAct (Reasoning + Acting)",
+            "mode": "LLM-powered with rule-based fallback",
+            "components": [
+                {
+                    "name": "vector_search",
+                    "description": "Searches Pinecone vector database for relevant tweets using semantic similarity",
+                    "parameters": "query (str), top_k (int)"
+                },
+                {
+                    "name": "web_scraper",
+                    "description": "Extracts and analyzes content from URLs found in tweets",
+                    "parameters": "url (str)"
+                },
+                {
+                    "name": "url_extractor",
+                    "description": "Identifies and extracts URLs from tweet text",
+                    "parameters": "text (str)"
+                }
+            ],
+            "workflow": "The agent follows an iterative ReAct loop: (1) THOUGHT - analyze current state and decide what information is needed, (2) ACTION - execute a tool (vector_search, web_scraper, or finalize), (3) OBSERVATION - review results. This continues for up to 5 iterations until sufficient information is gathered."
+        },
+        "prompt_template": {
+            "template": "What does [Public Figure Name] say about [Topic]?",
+            "examples": [
+                "What does Donald Trump say about immigration policy?",
+                "What is Barack Obama's opinion on healthcare reform?",
+                "What does Elon Musk say about space exploration and life on Mars?",
+                "What did Hillary Clinton say about climate change?",
+                "What is Joe Biden's stance on infrastructure?"
+            ],
+            "guidelines": [
+                "Include the public figure's name for targeted search results",
+                "Be specific about the topic for more relevant tweets",
+                "The agent works best with topics that public figures actively discuss on Twitter/X",
+                "For best results, ask about opinions, statements, or positions on specific issues"
+            ]
+        },
+        "prompt_examples": prompt_examples
+    })
+
 
 @app.route('/api/stats', methods=['GET'])
 def stats():
