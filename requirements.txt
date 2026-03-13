@@ -10,3 +10,5 @@ psycopg2-binary
 tqdm
 requests
 beautifulsoup4
+langgraph
+langchain-openai
