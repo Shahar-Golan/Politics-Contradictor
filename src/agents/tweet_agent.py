@@ -40,7 +40,7 @@ concise, evidence-based answer. Follow these rules:
 - Keep responses focused and readable with bullet points or short paragraphs"""
 
 
-def run_tweet_agent(query: str, top_k: int = 10) -> dict:
+def run_tweet_agent(query: str, top_k: int = 10, on_token=None) -> dict:
     """
     Search for tweets and synthesize a response.
 
@@ -84,8 +84,16 @@ def run_tweet_agent(query: str, top_k: int = 10) -> dict:
     ]
 
     try:
-        response = llm.invoke(messages)
-        answer = response.content.strip()
+        if on_token:
+            answer = ""
+            for chunk in llm.stream(messages):
+                token = chunk.content or ""
+                answer += token
+                on_token(token)
+            answer = answer.strip()
+        else:
+            response = llm.invoke(messages)
+            answer = response.content.strip()
     except Exception as e:
         answer = f"Error generating tweet analysis: {e}"
 

@@ -40,7 +40,7 @@ provide a detailed, comprehensive answer. Follow these rules:
 - Structure your response with clear sections for readability"""
 
 
-def run_news_agent(query: str, top_k: int = 7) -> dict:
+def run_news_agent(query: str, top_k: int = 7, on_token=None) -> dict:
     """
     Search for news articles and synthesize a response.
 
@@ -87,8 +87,16 @@ def run_news_agent(query: str, top_k: int = 7) -> dict:
     ]
 
     try:
-        response = llm.invoke(messages)
-        answer = response.content.strip()
+        if on_token:
+            answer = ""
+            for chunk in llm.stream(messages):
+                token = chunk.content or ""
+                answer += token
+                on_token(token)
+            answer = answer.strip()
+        else:
+            response = llm.invoke(messages)
+            answer = response.content.strip()
     except Exception as e:
         answer = f"Error generating news analysis: {e}"
 

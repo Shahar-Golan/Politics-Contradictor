@@ -41,7 +41,7 @@ Respond ONLY with valid JSON:
 User query: {query}"""
 
 
-def route_query(query: str) -> dict:
+def route_query(query: str, on_token=None) -> dict:
     """
     Classify query and return routing decision.
 
@@ -49,8 +49,16 @@ def route_query(query: str) -> dict:
         dict: {"route": "tweet_agent"|"news_agent"|"both", "reason": str}
     """
     try:
-        response = llm.invoke(ROUTER_PROMPT.format(query=query))
-        content = response.content.strip()
+        if on_token:
+            content = ""
+            for chunk in llm.stream(ROUTER_PROMPT.format(query=query)):
+                token = chunk.content or ""
+                content += token
+                on_token(token)
+            content = content.strip()
+        else:
+            response = llm.invoke(ROUTER_PROMPT.format(query=query))
+            content = response.content.strip()
 
         # Parse JSON from response
         result = json.loads(content)

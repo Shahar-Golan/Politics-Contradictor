@@ -187,6 +187,109 @@ def run_query(query: str) -> dict:
     return result
 
 
+def run_query_stream(query: str):
+    """
+    Stream query execution as SSE events.
+    Yields JSON strings: node_start, node_end, token, done.
+
+    Uses a thread+queue pattern so LLM tokens stream in real-time
+    while agent functions run in a background thread.
+    """
+    import json
+    import queue
+    import threading
+
+    q = queue.Queue()
+    SENTINEL = "__DONE__"
+
+    def emit(event):
+        q.put(json.dumps(event))
+
+    def on_token(token):
+        q.put(json.dumps({"type": "token", "content": token}))
+
+    def run_pipeline():
+        try:
+            # 1. Page Lookup
+            emit({"type": "node_start", "node": "page_lookup"})
+            page_result = lookup_page(query)
+            emit({"type": "node_end", "node": "page_lookup"})
+
+            if page_result["found"]:
+                emit({"type": "done", "data": {
+                    "answer": page_result["content"],
+                    "route": "page_cache", "route_reason": "Found in cache",
+                    "agent_used": "page_cache", "tweets": [], "articles": [],
+                }})
+                return
+
+            # 2. Router
+            emit({"type": "node_start", "node": "router"})
+            route_result = route_query(query)  # no streaming for router (it's fast + JSON)
+            emit({"type": "node_end", "node": "router", "data": route_result})
+
+            route = route_result.get("route", "tweet_agent")
+            reason = route_result.get("reason", "")
+            final = {"route": route, "route_reason": reason,
+                      "tweets": [], "articles": [], "answer": "", "agent_used": route}
+
+            # 3. Agent(s)
+            if route == "tweet_agent":
+                emit({"type": "node_start", "node": "tweet_agent"})
+                result = run_tweet_agent(query, on_token=on_token)
+                emit({"type": "node_end", "node": "tweet_agent"})
+                final["answer"] = result["answer"]
+                final["tweets"] = result["tweets"]
+
+            elif route == "news_agent":
+                emit({"type": "node_start", "node": "news_agent"})
+                result = run_news_agent(query, on_token=on_token)
+                emit({"type": "node_end", "node": "news_agent"})
+                final["answer"] = result["answer"]
+                final["articles"] = result["articles"]
+
+            elif route == "both":
+                emit({"type": "node_start", "node": "both"})
+
+                emit({"type": "node_start", "node": "tweet_agent"})
+                on_token("## From Tweets (direct statements)\n\n")
+                tweet_result = run_tweet_agent(query, on_token=on_token)
+                emit({"type": "node_end", "node": "tweet_agent"})
+
+                on_token("\n\n---\n\n## From News Coverage\n\n")
+
+                emit({"type": "node_start", "node": "news_agent"})
+                news_result = run_news_agent(query, on_token=on_token)
+                emit({"type": "node_end", "node": "news_agent"})
+
+                emit({"type": "node_end", "node": "both"})
+
+                final["answer"] = (
+                    "## From Tweets (direct statements)\n\n"
+                    + tweet_result["answer"] + "\n\n---\n\n"
+                    + "## From News Coverage\n\n"
+                    + news_result["answer"]
+                )
+                final["tweets"] = tweet_result["tweets"]
+                final["articles"] = news_result["articles"]
+                final["agent_used"] = "both"
+
+            emit({"type": "done", "data": final})
+        except Exception as e:
+            emit({"type": "error", "message": str(e)})
+        finally:
+            q.put(SENTINEL)
+
+    thread = threading.Thread(target=run_pipeline, daemon=True)
+    thread.start()
+
+    while True:
+        item = q.get()
+        if item == SENTINEL:
+            break
+        yield item
+
+
 if __name__ == "__main__":
     # Test the query graph
     test_queries = [

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from openai import OpenAI
 import os
@@ -11,7 +11,7 @@ from collections import OrderedDict
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from agent_tools.vector_search import vector_search
 from agent.react_agent import run_agent
-from graphs.query_graph import run_query
+from graphs.query_graph import run_query, run_query_stream
 
 # Load .env locally; Render will use its own Environment Variables
 env_path = Path(__file__).parent.parent / ".env"
@@ -199,6 +199,26 @@ def graph_query():
 
     except Exception as e:
         return jsonify({"error": f"Graph query failed: {str(e)}"}), 500
+
+
+@app.route('/api/v2/query/stream', methods=['POST'])
+def graph_query_stream():
+    """
+    SSE streaming endpoint for the LangGraph multi-agent pipeline.
+    Streams node transitions and LLM tokens in real-time.
+    """
+    data = request.json
+    user_query = data.get('query', '')
+
+    if not user_query:
+        return jsonify({"error": "No query provided"}), 400
+
+    def generate():
+        for event in run_query_stream(user_query):
+            yield f"data: {event}\n\n"
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 # Serve React frontend for all non-API routes
