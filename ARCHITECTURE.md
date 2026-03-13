@@ -202,13 +202,13 @@ Both use embedding model `RPRTHPB-text-embedding-3-small` via `https://api.llmod
 Politics-Contradictor/
 ├── src/
 │   ├── graphs/                         # LangGraph definitions
-│   │   ├── query_graph.py              # System B — interactive query [DONE]
+│   │   ├── query_graph.py              # System B — interactive query + SSE streaming [DONE]
 │   │   └── background_graph.py         # System A — daily pipeline [PLANNED]
 │   ├── agents/                         # Agent node implementations
-│   │   ├── page_lookup.py              # Check cached figure pages [DONE — stub]
-│   │   ├── router.py                   # Classify and route queries [DONE]
-│   │   ├── tweet_agent.py              # RAG over tweets [DONE]
-│   │   ├── news_agent.py               # RAG over news articles [DONE]
+│   │   ├── page_lookup.py              # Check cached figure pages [DONE — stub, instant return]
+│   │   ├── router.py                   # Classify and route queries, supports token streaming [DONE]
+│   │   ├── tweet_agent.py              # RAG over tweets, supports token streaming [DONE]
+│   │   ├── news_agent.py               # RAG over news articles, supports token streaming [DONE]
 │   │   ├── ingestion_agent.py          # Load new data [PLANNED]
 │   │   ├── topic_extractor.py          # Tag topics [PLANNED]
 │   │   ├── contradiction_finder.py     # Detect contradictions [PLANNED]
@@ -227,23 +227,25 @@ Politics-Contradictor/
 │   ├── prep_data.py                           # Data preparation
 │   └── read_first_tweet.py                    # Utility
 ├── api/
-│   ├── index.py                        # Flask API (all endpoints) [DONE]
+│   ├── index.py                        # Flask API (all endpoints + SSE stream) [DONE]
 │   └── test_request.py                 # Legacy API test
 ├── frontend/                           # React UI (Vite)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── ChatInterface.jsx       # Main chat UI [DONE]
-│   │   │   └── ChatInterface.css       # Styles [DONE]
+│   │   │   ├── ChatInterface.jsx       # Three-column layout with live streaming [DONE]
+│   │   │   ├── ChatInterface.css       # Dark theme styles [DONE]
+│   │   │   ├── FlowChart.jsx           # Animated pipeline flowchart [DONE]
+│   │   │   └── FlowChart.css           # Flowchart styles [DONE]
 │   │   ├── services/
-│   │   │   └── api.js                  # API client [DONE]
+│   │   │   └── api.js                  # API client + SSE stream consumer [DONE]
 │   │   ├── App.jsx
 │   │   ├── App.css
 │   │   ├── index.css
 │   │   └── main.jsx
 │   ├── package.json
-│   └── vite.config.js
+│   └── vite.config.js                  # Vite proxy config for API + SSE [DONE]
 ├── test/                               # Tests
-│   ├── test_endpoints.py               # Unit tests for all API endpoints [DONE]
+│   ├── test_endpoints.py               # Unit tests for all API endpoints (9/9 pass) [DONE]
 │   ├── check_all_indexes.py            # Pinecone index inspection
 │   ├── inspect_supabase_db.py          # Supabase data inspection
 │   ├── test_pinecone.py                # Pinecone connectivity test
@@ -258,34 +260,66 @@ Politics-Contradictor/
 
 ## Implementation Phases
 
-### Phase 1 — Interactive Query Graph (System B) [COMPLETED]
+### Phase 1 — Interactive Query Graph + UI (System B) [COMPLETED]
 
-Built the LangGraph query system with router + tweet_agent + news_agent.
+Built the LangGraph query system with router + tweet_agent + news_agent, SSE streaming, and a full real-time UI.
 
-**Planned items — completed:**
+**Phase 1a — Core graph (planned, completed):**
 
 - `src/graphs/query_graph.py` — StateGraph with 6 nodes: page_lookup, page_answer, router, tweet_agent, news_agent, both_agents. Conditional edges route based on page_found and route classification.
 - `src/agents/router.py` — LLM-based query classifier using ChatOpenAI. Outputs JSON with `route` ("tweet_agent" | "news_agent" | "both") and `reason`.
 - `src/agents/tweet_agent.py` — Searches `politics` Pinecone index via `vector_search`, synthesizes answer with chronologically sorted tweets.
 - `src/agents/news_agent.py` — Searches `politics-news` Pinecone index via `news_search`, synthesizes answer citing media outlet, state, and date.
-- `src/agents/page_lookup.py` — Stub returning `{"found": False}` until Phase 4 builds the `figure_pages` table.
-- `api/index.py` — Added `POST /api/v2/query` endpoint using `run_query()` from the QueryGraph. Also fixed a syntax error in the existing agent endpoint.
-- Frontend — Redesigned UI with sidebar layout, 3-mode selector (Graph / Agent / RAG), routing metadata display, and expandable source sections for tweets and articles.
+- `src/agents/page_lookup.py` — Stub returning `{"found": False}` until Phase 4 builds the `figure_pages` table. Executes instantly (too fast to see in the flowchart during loading, but shows green when done).
+- `api/index.py` — Added `POST /api/v2/query` endpoint. Also fixed a syntax error in the existing agent endpoint.
 
-**Additional items — not in original plan:**
+**Phase 1b — SSE streaming (not in original plan):**
 
-- `src/agent_tools/news_search.py` — Created a dedicated Pinecone search tool for the `politics-news` index (mirrors `vector_search.py` structure). This was needed because news and tweets live in separate Pinecone indexes.
-- `frontend/src/services/api.js` — Added `sendGraphQuery()` method for the new `/api/v2/query` endpoint.
-- `test/test_endpoints.py` — Unit tests covering all 4 API endpoints (9 tests total: `GET /api/stats`, `POST /api/prompt`, `POST /api/agent/query`, `POST /api/v2/query` with tweet/news/both routing, plus empty-input validation for each POST endpoint). All 9 tests pass.
-- `SETUP.md` — Setup and run instructions for backend and frontend, including API endpoint reference and example curl request.
-- Frontend full redesign — dark theme sidebar layout (not just "display which agent handled the query" as planned). Includes: mode-specific loading spinners, clickable example queries on empty state, expandable source tweets (blue accent) and source articles (green accent), color-coded route badges, responsive mobile layout.
-- `frontend/src/index.css` — Cleaned up Vite default dark/light mode styles that were conflicting with the component CSS.
+Real-time token streaming from each agent to the frontend via Server-Sent Events.
+
+- `run_query_stream()` in `query_graph.py` — runs the pipeline in a background thread, pushes events (`node_start`, `node_end`, `token`, `done`) through a `queue.Queue`. The main thread yields them as SSE data.
+- All three agents (`router`, `tweet_agent`, `news_agent`) now accept an `on_token` callback. When provided, they use `llm.stream()` instead of `llm.invoke()` and emit each token as it arrives.
+- `POST /api/v2/query/stream` — SSE endpoint that streams `text/event-stream` responses.
+- `frontend/src/services/api.js` — `streamGraphQuery()` uses `fetch` + `ReadableStream` to consume SSE events and dispatch them to React state.
+- `vite.config.js` — Vite proxy config forwards `/api` to Flask at `:5000`, solving CORS and SSE buffering issues.
+
+**Phase 1c — UI and flowchart (not in original plan):**
+
+Full three-column dark-theme UI with real-time pipeline visualization.
+
+- `FlowChart.jsx` + `FlowChart.css` — Animated pipeline component with 3 layout modes:
+  - **Linear** (RAG): Query → Embed → Search → Top 7 → LLM → Answer
+  - **Loop** (Agent): Query → Think → Choose → Execute → Observe (loop) → Answer
+  - **Vertical branching** (Graph): Query → Page Lookup → Router → [Tweet Agent | News Agent | Both] → Answer
+  - Nodes glow blue (active/pulse animation) during loading, turn green when pipeline completes. Unselected branches dim to 30% opacity.
+  - Graph mode uses real SSE `node_start` events for highlighting instead of timer-based animation.
+- `ChatInterface.jsx` — Three-column layout:
+  - **Left sidebar** (240px): mode selector (Graph/Agent/RAG), routing metadata card, agent info card
+  - **Main content**: response in styled cards with badge headers, source tweets (blue border) and articles (green border) with "View article" links, agent reasoning expandable section
+  - **Right sidebar** (320px): flowchart at top, live feed console (node events with colored dots), model output section showing per-node token streams with labeled sections and blinking cursor
+- `ChatInterface.css` — Dark theme (`#0f1923` bg, `#15202b` sidebars), responsive collapse for mobile
+- `index.css` — Cleaned up Vite defaults that conflicted with component styles
+
+**Phase 1d — Testing and docs (not in original plan):**
+
+- `test/test_endpoints.py` — Unit tests covering all 5 API endpoints (9 tests: `GET /api/stats`, `POST /api/prompt`, `POST /api/agent/query`, `POST /api/v2/query` with tweet/news/both routing, plus empty-input validation). All 9 pass.
+- `src/agent_tools/news_search.py` — Dedicated Pinecone search tool for the `politics-news` index.
+- `SETUP.md` — How to run backend and frontend, API endpoint reference, example curl request.
+- `ARCHITECTURE.md` — This file, kept up to date with implementation status.
 
 **Verified with:**
 
-- End-to-end graph test: ran `run_query()` directly for 3 query types, confirmed correct routing (tweet_agent, news_agent, both) with proper tweet/article counts.
+- End-to-end graph test: `run_query()` for 3 query types — correct routing with proper tweet/article counts.
+- Streaming test: `run_query_stream()` — router streams 44 tokens, news_agent streams 717 tokens, proper node_start/node_end events.
 - API integration test: `test/test_endpoints.py` — 9/9 passed against live local server.
+- SSE curl test: `curl.exe --no-buffer` against `/api/v2/query/stream` — confirmed real-time token delivery.
 - Frontend build: `npm run build` succeeds with no errors.
+
+**Known behaviors:**
+
+- Page Lookup node completes too fast to see blue highlighting during loading (it's a stub). Will be visible once Phase 4 adds real Supabase lookup.
+
+---
 
 ### Phase 2 — Topic Extraction [NOT STARTED]
 
@@ -304,7 +338,7 @@ Built the LangGraph query system with router + tweet_agent + news_agent.
 
 - Create `figure_pages` table in Supabase
 - `src/agents/page_builder.py` — generate per-figure summary pages
-- `src/agents/page_lookup.py` — replace stub with real Supabase lookup
+- `src/agents/page_lookup.py` — replace stub with real Supabase lookup (will make the node visible in the flowchart during loading)
 - Complete background graph — full pipeline
 - Frontend — per-figure profile pages with tabs (overview, news, contradictions)
 
