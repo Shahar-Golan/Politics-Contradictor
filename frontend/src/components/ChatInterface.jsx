@@ -248,9 +248,10 @@ function ChatInterface() {
                 <h2>Ask anything about political figures</h2>
                 <div className="example-queries">
                   {[
-                    'What did Trump say about Biden?',
-                    'How did newspapers cover Obama\'s healthcare policy?',
-                    'Compare Trump\'s tweets about tariffs with news coverage',
+                    "What does Hilary Clinton opinion about nuclear weapon?",
+                    "What does Donald Trump's policy about immigration in the United States?",
+                    "What is Barack Obama's opinion on healthcare reform?",
+                    "What does Elon Musk say about space exploration and life on Mars?"
                   ].map((q) => (
                     <button
                       key={q}
