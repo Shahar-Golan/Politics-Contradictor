@@ -1,0 +1,35 @@
+# politicians.yaml
+# Registry of politicians to track.
+#
+# Each entry defines a politician and the aliases/patterns used
+# to identify mentions of that politician in news articles.
+#
+# Fields:
+#   id          - unique slug identifier
+#   name        - canonical full name
+#   aliases     - list of name variants, nicknames, or partial names
+#                 used for text matching
+#   party       - political party affiliation
+#   role        - current known role (for context, not filtering)
+#   enabled     - whether tracking is active for this politician
+#   notes       - optional free-text notes for maintainers
+
+politicians:
+  - id: donald-trump
+    name: Donald Trump
+    aliases:
+      - Trump
+      - Donald J. Trump
+      - President Trump
+    party: Republican
+    role: President of the United States (47th)
+    enabled: true
+
+  - id: joe-biden
+    name: Joe Biden
+    aliases:
+      - Biden
+      - President Biden
+    party: Democrat
+    role: Former President of the United States
+    enabled: false

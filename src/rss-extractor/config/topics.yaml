@@ -1,0 +1,113 @@
+# topics.yaml
+# Topic/tag taxonomy used for annotating articles and feed items.
+#
+# These topics are used by the extractor's topic tagger to assign
+# lightweight labels to extracted articles.
+#
+# Fields:
+#   id          - unique slug identifier
+#   label       - human-readable label
+#   keywords    - list of keywords/phrases associated with this topic
+#                 (used for simple keyword-based matching)
+#   description - brief description for maintainers
+
+topics:
+  - id: economy
+    label: Economy
+    keywords:
+      - economy
+      - economic
+      - GDP
+      - inflation
+      - jobs
+      - unemployment
+      - budget
+      - deficit
+      - debt
+      - fiscal
+      - trade
+      - tariff
+    description: Economic policy, fiscal issues, trade.
+
+  - id: foreign-policy
+    label: Foreign Policy
+    keywords:
+      - foreign policy
+      - diplomacy
+      - treaty
+      - NATO
+      - Ukraine
+      - China
+      - Iran
+      - Israel
+      - Russia
+      - sanctions
+      - alliance
+    description: International relations and foreign affairs.
+
+  - id: healthcare
+    label: Healthcare
+    keywords:
+      - healthcare
+      - health care
+      - Medicare
+      - Medicaid
+      - ACA
+      - Affordable Care Act
+      - insurance
+      - drug prices
+      - prescription
+    description: Healthcare policy and reform.
+
+  - id: immigration
+    label: Immigration
+    keywords:
+      - immigration
+      - immigrant
+      - border
+      - asylum
+      - deportation
+      - visa
+      - DACA
+      - ICE
+      - undocumented
+    description: Immigration policy and enforcement.
+
+  - id: climate
+    label: Climate & Environment
+    keywords:
+      - climate
+      - climate change
+      - environment
+      - emissions
+      - carbon
+      - EPA
+      - clean energy
+      - renewable
+    description: Climate change, environmental regulation, energy policy.
+
+  - id: elections
+    label: Elections
+    keywords:
+      - election
+      - vote
+      - ballot
+      - campaign
+      - primary
+      - midterm
+      - polling
+      - voter
+    description: Electoral politics, campaigns, voting.
+
+  - id: judiciary
+    label: Judiciary & Legal
+    keywords:
+      - supreme court
+      - court
+      - judge
+      - ruling
+      - lawsuit
+      - indictment
+      - legal
+      - justice
+    description: Judicial appointments, rulings, and legal proceedings.

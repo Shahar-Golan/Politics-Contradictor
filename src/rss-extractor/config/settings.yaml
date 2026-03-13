@@ -1,0 +1,57 @@
+# settings.yaml
+# Global runtime settings for the Politician Tracker pipeline.
+#
+# These values can be overridden via environment variables (see .env.example).
+# Environment variables take precedence over this file at runtime.
+
+# --- HTTP / fetching ---
+http:
+  # User-agent string sent with all outbound HTTP requests
+  user_agent: "PoliticianTracker/0.1 (research bot)"
+  # Timeout in seconds for HTTP requests
+  timeout_seconds: 30
+  # Number of times to retry a failed request before giving up
+  max_retries: 3
+  # Seconds to wait between retry attempts
+  retry_backoff_seconds: 2
+  # Respect robots.txt when fetching article pages
+  respect_robots_txt: true
+
+# --- Feed polling ---
+polling:
+  # Default interval in minutes between feed polls (can be overridden per feed)
+  default_interval_minutes: 30
+  # Maximum number of feeds to poll concurrently
+  max_concurrent_polls: 5
+
+# --- Deduplication ---
+dedup:
+  # Fields used to compute a fingerprint for deduplication
+  # Options: url, title, content_hash
+  fingerprint_fields:
+    - url
+    - title
+
+# --- Article extraction ---
+extraction:
+  # Minimum article body length (characters) to accept as valid extraction
+  min_body_length: 200
+  # Preferred extraction backend: "trafilatura" | "newspaper" | "beautifulsoup"
+  preferred_backend: trafilatura
+
+# --- Relevance scoring ---
+relevance:
+  # Minimum score (0.0–1.0) for an article to be considered relevant to a politician
+  min_score: 0.3
+
+# --- Storage ---
+storage:
+  # Base directory for raw and processed data artifacts
+  data_dir: ./data
+  # SQLite database path (used for local/dev runs)
+  database_url: "sqlite:///./data/tracker.db"
+
+# --- Logging ---
+logging:
+  level: INFO
+  format: "%(asctime)s %(levelname)s %(name)s: %(message)s"
