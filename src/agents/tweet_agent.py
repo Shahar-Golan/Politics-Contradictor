@@ -6,6 +6,7 @@ Searches the politics Pinecone index for relevant tweets.
 
 import os
 import sys
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -31,13 +32,40 @@ and public positions.
 Given the user's question and relevant tweets retrieved from the database, provide a
 concise, evidence-based answer. Follow these rules:
 
-- Present the most relevant tweets in chronological order (oldest to newest)
-- For each tweet: include author name, date, and direct quote
+- Write a concise synthesis first (do NOT output a full raw tweet list)
+- Mention only the most important 2-4 points
+- You may include up to 1-2 short direct quotes inline when helpful
 - Omit URLs that appear in tweet text
 - Highlight rivalries or contradictions between politicians if evident
 - Use ONLY the provided tweet data — do not use external knowledge
 - If tweets are not relevant: "I don't have tweets addressing this topic."
-- Keep responses focused and readable with bullet points or short paragraphs"""
+- Keep responses focused and readable with bullet points or short paragraphs
+- Do NOT include sections/titles like "Tweets", "Sources", "Raw tweets", or "X sources"
+- Do NOT repeat full tweet text that will already be shown separately in the UI"""
+
+
+def _strip_duplicate_source_dump(answer: str) -> str:
+    """
+    Remove accidental trailing source/tweet dump if the model emits it.
+
+    The frontend already renders tweets in dedicated source cards, so keeping this
+    in the answer creates duplicate and noisy output.
+    """
+    if not answer:
+        return answer
+
+    patterns = [
+        r"\n(?:Tweets|Tweet Sources|Sources|Raw Tweets?)\s*\n",
+        r"\n\d+\s+sources\s*\n",
+    ]
+
+    cleaned = answer
+    for pattern in patterns:
+        parts = re.split(pattern, cleaned, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) > 1:
+            cleaned = parts[0].rstrip()
+
+    return cleaned.strip()
 
 
 def run_tweet_agent(query: str, top_k: int = 10, on_token=None) -> dict:
@@ -94,6 +122,8 @@ def run_tweet_agent(query: str, top_k: int = 10, on_token=None) -> dict:
         else:
             response = llm.invoke(messages)
             answer = response.content.strip()
+
+        answer = _strip_duplicate_source_dump(answer)
     except Exception as e:
         answer = f"Error generating tweet analysis: {e}"
 
