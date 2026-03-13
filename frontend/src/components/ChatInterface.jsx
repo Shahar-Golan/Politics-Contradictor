@@ -12,6 +12,30 @@ function parseResponse(text) {
     .replace(/\n/g, '<br/>');
 }
 
+function getTweetSourceUrl(tweet) {
+  const meta = tweet?.metadata || {};
+
+  const candidateKeys = [
+    'tweet_url',
+    'url',
+    'link',
+    'source_url',
+    'permalink',
+    'tweet_link',
+  ];
+
+  for (const key of candidateKeys) {
+    const value = meta[key];
+    if (typeof value === 'string' && /^https?:\/\//i.test(value.trim())) {
+      return value.trim();
+    }
+  }
+
+  const text = meta?.text || '';
+  const match = text.match(/https?:\/\/[^\s<>")]+/i);
+  return match ? match[0] : null;
+}
+
 function ChatInterface() {
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState(null);
@@ -273,13 +297,23 @@ function ChatInterface() {
                     </div>
                     <div className="card-body">
                       {graphData.tweets.map((t, i) => (
-                        <div key={i} className="source-item tweet-item">
-                          <div className="source-item-header">
-                            <strong>{t.metadata?.author_name || 'Unknown'}</strong>
-                            <span className="source-date">{t.metadata?.created_at || ''}</span>
-                          </div>
-                          <p>{t.metadata?.text || ''}</p>
-                        </div>
+                        (() => {
+                          const tweetUrl = getTweetSourceUrl(t);
+                          return (
+                            <div key={i} className="source-item tweet-item">
+                              <div className="source-item-header">
+                                <strong>{t.metadata?.author_name || 'Unknown'}</strong>
+                                <span className="source-date">{t.metadata?.created_at || ''}</span>
+                              </div>
+                              <p>{t.metadata?.text || ''}</p>
+                              {tweetUrl && (
+                                <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="source-link">
+                                  Open source link
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })()
                       ))}
                     </div>
                   </div>

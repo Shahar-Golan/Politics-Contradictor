@@ -4,6 +4,7 @@ Searches Pinecone for relevant tweets based on user query.
 """
 
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -25,6 +26,23 @@ EMBEDDING_DIMENSIONS = 1024
 _pc_client = None
 _index = None
 _openai_client = None
+
+
+def _clean_tweet_text(text: str) -> str:
+    """
+    Remove common encoding artifacts from tweet text.
+
+    In this dataset, corrupted characters often appear as repeated question marks
+    (e.g., "??????") inside quoted text. We remove these runs while preserving
+    normal punctuation.
+    """
+    if not isinstance(text, str) or not text:
+        return text
+
+    cleaned = text.replace("\ufffd", "")
+    cleaned = re.sub(r"\?{2,}", "", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    return cleaned.strip()
 
 
 def _get_pinecone_client():
@@ -100,10 +118,15 @@ def vector_search(query: str, top_k: int = 5) -> dict:
         # Format results
         formatted_results = []
         for match in search_results['matches']:
+            metadata = match.get('metadata', {})
+            if isinstance(metadata, dict) and 'text' in metadata:
+                metadata = dict(metadata)
+                metadata['text'] = _clean_tweet_text(metadata.get('text', ''))
+
             result = {
                 "id": match['id'],
                 "score": match['score'],
-                "metadata": match.get('metadata', {})
+                "metadata": metadata
             }
             formatted_results.append(result)
         
