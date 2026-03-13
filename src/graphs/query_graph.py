@@ -225,7 +225,7 @@ def run_query_stream(query: str):
 
             # 2. Router
             emit({"type": "node_start", "node": "router"})
-            route_result = route_query(query)  # no streaming for router (it's fast + JSON)
+            route_result = route_query(query, on_token=on_token)
             emit({"type": "node_end", "node": "router", "data": route_result})
 
             route = route_result.get("route", "tweet_agent")

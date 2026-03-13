@@ -601,6 +601,37 @@
   word-break: break-word;
 }
 
+.node-output-block {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #2f3e4e;
+}
+
+.node-output-block:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.node-output-block.active {
+  border-bottom: none;
+}
+
+.node-output-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #1da1f2;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.node-output-text {
+  color: #a0c4e8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .token-cursor {
   color: #1da1f2;
   animation: blink 0.8s step-end infinite;

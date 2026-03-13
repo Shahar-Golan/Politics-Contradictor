@@ -139,10 +139,16 @@ function FlowChart({ mode, loading, graphData, agentData, done, streamNode }) {
   useEffect(() => {
     if (loading) {
       setCompletedPath([]);
-      setAnimatedNodes(new Set());
-      setActiveNode(null);
+      if (mode === 'graph') {
+        // query is implicit — always mark it as visited immediately
+        setAnimatedNodes(new Set(['query']));
+        setActiveNode('query');
+      } else {
+        setAnimatedNodes(new Set());
+        setActiveNode(null);
+      }
     }
-  }, [loading]);
+  }, [loading, mode]);
 
   // When done, show the completed path
   useEffect(() => {

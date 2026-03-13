@@ -22,6 +22,7 @@ function ChatInterface() {
   const [mode, setMode] = useState('graph');
   const [streamNode, setStreamNode] = useState(null);
   const [streamText, setStreamText] = useState('');
+  const [nodeOutputs, setNodeOutputs] = useState({});
   const [liveEvents, setLiveEvents] = useState([]);
   const liveFeedRef = useRef(null);
 
@@ -43,16 +44,34 @@ function ChatInterface() {
     setDone(false);
     setStreamNode(null);
     setStreamText('');
+    setNodeOutputs({});
     setLiveEvents([]);
 
     try {
       if (mode === 'graph') {
         await chatAPI.streamGraphQuery(question, (event) => {
           if (event.type === 'node_start') {
-            setStreamNode(event.node);
-            setStreamText('');
+            setStreamNode(prev => {
+              // Save previous node's output before switching
+              if (prev) {
+                setStreamText(currentText => {
+                  if (currentText) {
+                    setNodeOutputs(outputs => ({ ...outputs, [prev]: currentText }));
+                  }
+                  return '';
+                });
+              }
+              return event.node;
+            });
             setLiveEvents(prev => [...prev, { type: 'node', node: event.node, status: 'start' }]);
           } else if (event.type === 'node_end') {
+            // Save this node's output on end
+            setStreamText(currentText => {
+              if (currentText && event.node) {
+                setNodeOutputs(outputs => ({ ...outputs, [event.node]: currentText }));
+              }
+              return currentText;
+            });
             setLiveEvents(prev => [...prev, { type: 'node', node: event.node, status: 'end', data: event.data }]);
             if (event.node === 'router' && event.data) {
               setGraphData(prev => ({ ...prev, route: event.data.route, route_reason: event.data.reason }));
@@ -383,13 +402,28 @@ function ChatInterface() {
           </div>
         )}
 
-        {/* Live token output */}
-        {mode === 'graph' && streamNode && streamText && (
+        {/* Node outputs — completed + live */}
+        {mode === 'graph' && (Object.keys(nodeOutputs).length > 0 || (streamNode && streamText)) && (
           <div className="sidebar-section live-tokens-section">
-            <label className="sidebar-label">{nodeLabels[streamNode] || streamNode} output</label>
+            <label className="sidebar-label">Model Output</label>
             <div className="live-tokens" ref={liveFeedRef}>
-              {streamText}
-              <span className="token-cursor">|</span>
+              {/* Previous node outputs */}
+              {Object.entries(nodeOutputs).map(([node, text]) => (
+                <div key={node} className="node-output-block">
+                  <div className="node-output-label">{nodeLabels[node] || node}</div>
+                  <div className="node-output-text">{text}</div>
+                </div>
+              ))}
+              {/* Current streaming node */}
+              {streamNode && streamText && (
+                <div className="node-output-block active">
+                  <div className="node-output-label">{nodeLabels[streamNode] || streamNode}</div>
+                  <div className="node-output-text">
+                    {streamText}
+                    <span className="token-cursor">|</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
