@@ -1,0 +1,17 @@
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+    "title": "Senate passes infrastructure bill with bipartisan support",
+    "text": "The U.S. Senate passed a landmark infrastructure bill on Thursday with strong bipartisan support. President Biden praised the legislation, calling it \"a once-in-a-generation investment.\" The bill allocates $550 billion in new federal spending for roads, bridges, and broadband internet. Senate Majority Leader Chuck Schumer hailed the vote as a major achievement.",
+    "date": "2025-10-15T14:30:00+00:00",
+    "media_name": "Reuters",
+    "media_type": "rss_news",
+    "source_platform": "rss",
+    "state": "",
+    "city": "",
+    "link": "https://www.reuters.com/example/senate-infrastructure-bill",
+    "speakers_mentioned": "Joe Biden, Chuck Schumer",
+    "created_at": "2025-10-15T16:00:00+00:00"
+  }
+]

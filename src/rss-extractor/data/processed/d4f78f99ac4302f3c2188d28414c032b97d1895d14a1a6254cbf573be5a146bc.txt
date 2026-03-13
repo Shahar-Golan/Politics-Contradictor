@@ -1,0 +1,46 @@
+Cheap Iranian drone attacks are forcing the Pentagon to rapidly expand layered air defenses in the Middle East, as thousands of U.S. troops stationed across the region face an escalating aerial threat that is testing the limits of traditional missile defenses.
+The United Arab Emirates (UAE) said Tuesday its air defenses detected nine ballistic missiles and 35 drones launched by Iran. Eight missiles were intercepted while one fell into the sea.
+Of the 35 drones, 26 were shot down and nine crashed on UAE soil, the country said.
+IRAN WAR, 11 DAYS IN: US CONTROLS SKIES, OIL SURGES AND THE REGION BRACES FOR WHAT’S NEXT
+The engagement highlights how the battlefield is shifting.
+Ballistic missiles travel high and fast, allowing long-range interceptors such as the Patriot air defense system and the Terminal High Altitude Area Defense system (THAAD) to engage them predictably. Drone swarms, which Iran increasingly has relied on in recent exchanges, present a different challenge to U.S. forces.
+They fly lower, move slower and often arrive in clusters, making them harder to detect and more likely to strain defenses built for high-speed threats.
+U.S. troops already have been directly affected by one-way attack drones in the region. In a March 1 strike near Camp Arifjan in Kuwait, six American service members were killed and dozens wounded when an Iranian drone hit a tactical operations center.
+Each interception also carries a cost.
+High-end missile interceptors can run into the millions of dollars per shot.
+Many of the drones they are designed to defeat are far cheaper and produced in large numbers — creating what defense officials have described as a growing "math problem" in modern warfare. The U.S. can end up firing expensive missiles at relatively inexpensive drones, a dynamic that becomes harder to sustain if attacks come in waves.
+That imbalance is accelerating a push inside the Pentagon to expand a layered counter-drone strategy — combining short-range interceptors, electronic warfare tools and emerging technologies such as high-energy lasers.
+For U.S. forces in the region, larger drone waves increase the odds that defenses are stretched, and that even one drone could reach a base or ship.
+This marks the first sustained confrontation in which U.S. forces are facing large-scale, state-backed drone waves as a central feature of the battlefield — forcing commanders to adapt in real time and draw on lessons learned from Ukraine, where mass-produced Shahed drones reshaped air defense strategy.
+Lasers and staying power
+Among the new U.S. systems drawing renewed attention are high-energy lasers.
+Directed energy is being developed and tested for counter-drone missions and has been used in limited domestic contexts.
+U.S. defense officials say lasers offer a potentially significant advantage: Once powered, they can fire repeatedly without expending traditional ammunition.
+Unlike missile interceptors, which must be replaced after each launch, a laser system can continue engaging targets as long as sufficient power is available. In theory, that provides sustained defensive capacity during large drone waves.
+"It’s a function now of our procurement system, moving those things to the troops as fast as we can," retired Vice Adm. Kevin Donegan, former commander of U.S. Naval Forces Central Command and the U.S. 5th Fleet, told Fox News Digital.
+Donegan acknowledged the technology is real but not yet fully fielded across combat zones.
+Scaling high-energy systems requires power generation, integration and infrastructure — all of which take time.
+A U.S. official confirmed to Fox News Digital directed energy systems have been tested and employed to counter drones in combat scenarios and the Pentagon "continues to work to scale this capability as quickly as possible."
+Central Command, the U.S. military command tasked with overseeing the Middle East, declined to comment on whether lasers are part of its current drone defense system against Iran.
+Building defensive depth
+While lasers represent a longer-term evolution, commanders are relying on multiple defensive layers today.
+The recent deployment of the Merops drone-on-drone interceptor into U.S. Central Command reflects that approach.
+Developed by U.S.-backed defense firm Perennial Autonomy, Merops is a mobile counter-drone system that launches small interceptor drones from a truck-mounted platform to disable incoming threats. The system was battle-tested against Shahed drones in Ukraine and fielded in NATO countries such as Poland before being accelerated into the Middle East as drone activity intensified.
+A former defense official familiar with counter-drone operations said effective counter-UAS capability depends on overlapping systems integrated around high-value targets rather than reliance on a single interceptor.
+"Effective counter-UAS capability is overlapping," the official said. "No one system solves the drone problem by itself."
+AYATOLLAH'S ARSENAL VS. AMERICAN FIREPOWER: IRAN'S TOP 4 THREATS AND HOW WE FIGHT BACK
+U.S. ships in the region rely on short-range missile systems such as the Rolling Airframe Missile and Sea Sparrow, along with the Close-In Weapon System, a radar-guided rapid-fire gun that can engage threats at close range.
+Ground-based defenses incorporate radar detection with specialized interceptors such as Raytheon’s Coyote family, designed to defeat small unmanned aircraft. Industry systems like Anduril’s Roadrunner add autonomous interceptor drones capable of engaging airborne threats and, in some configurations, returning for reuse.
+Success begins with early detection. Radar systems track low-flying drones and give operators time to choose whether to jam, intercept or destroy incoming threats.
+"We’ve built into the weapon systems of all our military platforms that are combatants counter-drone capability," Donegan said.
+Lessons from Ukraine
+Iran’s Shahed drones were refined during Russia’s war in Ukraine, where cities faced nightly waves of low-cost one-way attack aircraft. There, layered defenses combining short-range interceptors, electronic warfare and evolving technologies proved essential in absorbing sustained attacks.
+Ukrainian officials have said some cities faced more than a hundred drones in a single night, forcing air defense crews to remain on alert for hours at a time.
+Ukraine has since offered to share its battlefield experience with the United States and Gulf partners as Iranian drone activity expands in the Middle East.
+Officials say those lessons are influencing U.S. planning.
+"JIATF-401 is accelerating procurement of multiple counter-UAS capabilities across several combatant commands, including sensing radars, kinetic interceptors and other available systems, not just Merops, to expand layered defenses in the U.S. Central Command area of operations," a U.S. official said.
+"Some of the capabilities being surged to support our warfighters reflect lessons we are learning and technology we are transferring from the battlefield in Ukraine."
+CLICK HERE TO DOWNLOAD THE FOX NEWS APP
+The result is expanding defensive depth — designed to absorb and defeat a threat that is inexpensive, persistent and increasingly central to modern warfare.
+For the troops stationed at those bases and aboard those ships, that layered defense is what stands between a drone intercepted in the sky and one that reaches its target.
+As drone production scales and tactics evolve, the contest between low-cost attack drones and layered air defenses playing out in Iran the future of warfare itself.

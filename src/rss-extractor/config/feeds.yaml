@@ -1,0 +1,55 @@
+# feeds.yaml
+# Registry of RSS/Atom feeds to poll.
+#
+# Each entry defines a feed source for the Scout poller.
+# Fields:
+#   id         - unique slug identifier for this feed
+#   name       - human-readable display name
+#   url        - URL of the RSS or Atom feed
+#   enabled    - whether the feed is active (true/false)
+#   tags       - optional list of topic tags for this source
+#   poll_interval_minutes - how often to poll (overrides global setting)
+
+feeds:
+  - id: NYTimes-Politics
+    name: New York Times Politics
+    url: https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
+    enabled: true
+    tags:
+      - politics
+      - national
+    poll_interval_minutes: 30
+
+  - id: politico
+    name: Politico
+    url: https://rss.politico.com/politics-news.xml
+    enabled: true
+    tags:
+      - politics
+      - national
+    poll_interval_minutes: 30
+  - id: bbc-us-canada
+    name: BBC US & Canada
+    url: https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml
+    enabled: true
+    tags:
+      - politics
+      - international
+    poll_interval_minutes: 30
+  - id: fox-news-politics
+    name: Fox News Politics
+    url: https://moxie.foxnews.com/google-publisher/politics.xml
+    enabled: true
+    tags:
+      - politics
+      - national
+    poll_interval_minutes: 30
+  - id: cbs-news-politics
+    name: CBS News Politics
+    url: https://www.cbsnews.com/latest/rss/us
+    enabled: true
+    tags:
+      - politics
+      - national
+    poll_interval_minutes: 30
+  
