@@ -1,0 +1,1 @@
+Folder for implementation of issue 3, i.e. 3-build-the-political-dossier-extraction-pipeline-on-top-of-news_articles
