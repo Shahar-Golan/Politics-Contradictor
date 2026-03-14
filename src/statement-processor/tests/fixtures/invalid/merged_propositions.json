@@ -1,0 +1,14 @@
+{
+  "doc_id": "article-merged-001",
+  "stance_events": [
+    {
+      "politician": "Donald Trump",
+      "topic": "immigration",
+      "normalized_proposition": "Donald Trump opposes open borders, supports a border wall, wants to deport undocumented immigrants, and opposes birthright citizenship.",
+      "stance_direction": "oppose",
+      "stance_mode": "statement",
+      "evidence_role": "direct_quote",
+      "confidence": 0.85
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "doc_id": "article-policy-action-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "climate",
+      "subtopic": "Paris Agreement",
+      "normalized_proposition": "Joe Biden supports United States participation in the Paris Climate Agreement.",
+      "stance_direction": "support",
+      "stance_mode": "action",
+      "speaker": null,
+      "target_entity": "Paris Climate Agreement",
+      "event_date": "2021-01-20",
+      "event_date_precision": "day",
+      "evidence_role": "inferred_from_action",
+      "quote_text": null,
+      "quote_start_char": null,
+      "quote_end_char": null,
+      "paraphrase": "Biden signed an executive order on his first day in office to re-enter the Paris Climate Agreement.",
+      "confidence": 0.99,
+      "notes": "Stance inferred from executive order signing, not a verbal statement."
+    }
+  ]
+}

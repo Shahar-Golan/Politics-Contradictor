@@ -1,0 +1,43 @@
+{
+  "doc_id": "article-multi-event-001",
+  "stance_events": [
+    {
+      "politician": "Donald Trump",
+      "topic": "immigration",
+      "subtopic": "southern border",
+      "normalized_proposition": "Donald Trump opposes allowing asylum seekers to enter the United States at the southern border.",
+      "stance_direction": "oppose",
+      "stance_mode": "statement",
+      "speaker": "Donald Trump",
+      "target_entity": "asylum seekers",
+      "event_date": "2024-01-12",
+      "event_date_precision": "day",
+      "evidence_role": "direct_quote",
+      "quote_text": "We will shut down the border on day one. No more open borders.",
+      "quote_start_char": 512,
+      "quote_end_char": 571,
+      "paraphrase": "Trump pledged to close the southern border immediately upon taking office.",
+      "confidence": 0.95,
+      "notes": null
+    },
+    {
+      "politician": "Donald Trump",
+      "topic": "trade",
+      "subtopic": "tariffs on China",
+      "normalized_proposition": "Donald Trump supports imposing 60 percent tariffs on goods imported from China.",
+      "stance_direction": "support",
+      "stance_mode": "promise",
+      "speaker": "Donald Trump",
+      "target_entity": "China",
+      "event_date": "2024-01-12",
+      "event_date_precision": "day",
+      "evidence_role": "reported_speech",
+      "quote_text": null,
+      "quote_start_char": null,
+      "quote_end_char": null,
+      "paraphrase": "Trump indicated he would levy 60% tariffs on Chinese imports if elected.",
+      "confidence": 0.88,
+      "notes": "No direct quotation available; based on reported remarks at campaign rally."
+    }
+  ]
+}

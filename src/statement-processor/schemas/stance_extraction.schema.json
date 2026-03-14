@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Shahar-Golan/Politics-Contradictor/statement-processor/schemas/stance_extraction.schema.json",
+  "title": "StanceExtractionResult",
+  "description": "Output produced by the stance extractor for a single news article. Contains zero-to-many atomic stance events.",
+  "type": "object",
+  "required": ["doc_id", "stance_events"],
+  "additionalProperties": false,
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier of the source article (matches news_articles.doc_id)."
+    },
+    "stance_events": {
+      "type": "array",
+      "description": "Zero or more atomic stance events extracted from the article.",
+      "items": {
+        "$ref": "#/$defs/StanceEvent"
+      }
+    }
+  },
+  "$defs": {
+    "StanceEvent": {
+      "title": "StanceEvent",
+      "description": "One atomic stance event: a single politician expressing or enacting a single proposition.",
+      "type": "object",
+      "required": [
+        "politician",
+        "topic",
+        "normalized_proposition",
+        "stance_direction",
+        "stance_mode",
+        "evidence_role",
+        "confidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "politician": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full name of the politician taking the stance."
+        },
+        "topic": {
+          "type": "string",
+          "enum": [
+            "immigration",
+            "trade",
+            "foreign_policy",
+            "abortion",
+            "healthcare",
+            "economy",
+            "taxation",
+            "crime",
+            "climate",
+            "energy",
+            "elections",
+            "democracy",
+            "other"
+          ],
+          "description": "High-level policy area. Must be one of the controlled vocabulary values."
+        },
+        "subtopic": {
+          "type": ["string", "null"],
+          "maxLength": 80,
+          "description": "Optional finer-grained sub-category within the topic."
+        },
+        "normalized_proposition": {
+          "type": "string",
+          "minLength": 5,
+          "description": "A single declarative sentence summarising the politician's position in plain language."
+        },
+        "stance_direction": {
+          "type": "string",
+          "enum": ["support", "oppose", "mixed", "unclear"],
+          "description": "The direction of the stance toward the proposition."
+        },
+        "stance_mode": {
+          "type": "string",
+          "enum": ["statement", "action", "promise", "accusation", "value_judgment"],
+          "description": "The mode or form through which the stance is expressed."
+        },
+        "speaker": {
+          "type": ["string", "null"],
+          "description": "Who delivered the statement. May differ from politician (e.g. a spokesperson). Optional."
+        },
+        "target_entity": {
+          "type": ["string", "null"],
+          "description": "The entity the stance is directed at (a person, country, bill, organisation, etc.). Optional."
+        },
+        "event_date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?$",
+          "description": "ISO-8601 date (YYYY, YYYY-MM, or YYYY-MM-DD) when the stance was expressed."
+        },
+        "event_date_precision": {
+          "type": "string",
+          "enum": ["day", "month", "year", "approximate"],
+          "description": "How precise event_date is. Must be provided when event_date is set."
+        },
+        "evidence_role": {
+          "type": "string",
+          "enum": [
+            "direct_quote",
+            "reported_speech",
+            "inferred_from_action",
+            "headline_claim",
+            "summary_statement"
+          ],
+          "description": "How the supporting evidence relates to the stance."
+        },
+        "quote_text": {
+          "type": ["string", "null"],
+          "description": "Verbatim text from the article that supports this event. Optional."
+        },
+        "quote_start_char": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "0-based character offset of quote_text in the article body."
+        },
+        "quote_end_char": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Exclusive end character offset of quote_text in the article body."
+        },
+        "paraphrase": {
+          "type": ["string", "null"],
+          "maxLength": 200,
+          "description": "A brief paraphrase of the supporting evidence in plain language."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Extractor confidence in this event (0.0 = no confidence, 1.0 = certain)."
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "maxLength": 300,
+          "description": "Extraction caveats, uncertainty notes, or edge-case explanations."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "doc_id": "article-bad-vocab-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "housing",
+      "normalized_proposition": "Joe Biden supports affordable housing legislation.",
+      "stance_direction": "yes",
+      "stance_mode": "speech",
+      "evidence_role": "quote",
+      "confidence": 0.9
+    }
+  ]
+}
