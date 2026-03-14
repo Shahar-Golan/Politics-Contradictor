@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 import sys
 import json
+import psycopg2
 from dotenv import load_dotenv
 from pathlib import Path
 from collections import OrderedDict
@@ -35,6 +36,21 @@ client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url=BASE_URL
 )
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip('"')
+
+
+def _get_db():
+    """Create a Supabase DB connection."""
+    return psycopg2.connect(
+        SUPABASE_URL,
+        connect_timeout=10,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
+    )
+
 
 SYSTEM_PROMPT = """You are a source of truth for what public figures have actually stated on social media. Your role is to provide accurate, concise information about public figures' opinions and statements based strictly on their tweets.
 
@@ -290,6 +306,61 @@ def graph_query_stream():
 
     return Response(generate(), mimetype='text/event-stream',
                     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+
+@app.route('/api/speakers', methods=['GET'])
+def get_speakers():
+    """Returns list of all speaker profiles (summary only)."""
+    try:
+        conn = _get_db()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT speaker_id, name, party, "current_role",
+                       profile->'bio'->>'born' as born,
+                       profile->'dataset_insights'->>'total_articles' as total_articles
+                FROM speaker_profiles ORDER BY name
+            """)
+            rows = cur.fetchall()
+        conn.close()
+
+        speakers = []
+        for row in rows:
+            speakers.append({
+                "speaker_id": row[0],
+                "name": row[1],
+                "party": row[2],
+                "current_role": row[3],
+                "born": row[4] or "",
+                "total_articles": int(row[5]) if row[5] else 0,
+            })
+        return jsonify(speakers)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/speakers/<speaker_id>', methods=['GET'])
+def get_speaker_profile(speaker_id):
+    """Returns full profile for a specific speaker."""
+    try:
+        conn = _get_db()
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT profile, updated_at FROM speaker_profiles WHERE speaker_id = %s",
+                (speaker_id,)
+            )
+            row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"error": "Speaker not found"}), 404
+
+        profile = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+        profile["updated_at"] = row[1].isoformat() if row[1] else None
+        return jsonify(profile)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # Serve React frontend for all non-API routes

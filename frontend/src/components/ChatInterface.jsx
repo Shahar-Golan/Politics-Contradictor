@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { chatAPI } from '../services/api';
 import FlowChart from './FlowChart';
+import SpeakerProfile from './SpeakerProfile';
 import './ChatInterface.css';
 
 function parseResponse(text) {
@@ -48,6 +49,7 @@ function ChatInterface() {
   const [streamText, setStreamText] = useState('');
   const [nodeOutputs, setNodeOutputs] = useState({});
   const [liveEvents, setLiveEvents] = useState([]);
+  const [showProfiles, setShowProfiles] = useState(false);
   const liveFeedRef = useRef(null);
 
   // Auto-scroll live feed
@@ -56,6 +58,10 @@ function ChatInterface() {
       liveFeedRef.current.scrollTop = liveFeedRef.current.scrollHeight;
     }
   }, [streamText, liveEvents]);
+
+  if (showProfiles) {
+    return <SpeakerProfile onBack={() => setShowProfiles(false)} />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -230,6 +236,12 @@ function ChatInterface() {
             </div>
           </div>
         )}
+
+        <div className="sidebar-section">
+          <button className="profiles-btn" onClick={() => setShowProfiles(true)}>
+            Speaker Profiles
+          </button>
+        </div>
 
         <div className="sidebar-footer">
           <a href="/api/stats" target="_blank" rel="noopener noreferrer" className="status-link">

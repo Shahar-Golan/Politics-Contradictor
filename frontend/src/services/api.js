@@ -65,5 +65,15 @@ export const chatAPI = {
   async getStats() {
     const response = await axios.get(`${API_BASE_URL}/stats`);
     return response.data;
+  },
+
+  async getSpeakers() {
+    const response = await axios.get(`${API_BASE_URL}/speakers`);
+    return response.data;
+  },
+
+  async getSpeakerProfile(speakerId) {
+    const response = await axios.get(`${API_BASE_URL}/speakers/${speakerId}`);
+    return response.data;
   }
 };

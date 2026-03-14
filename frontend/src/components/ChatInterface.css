@@ -169,6 +169,25 @@
 
 /* ── Sidebar Footer ──────────────────────────────────────── */
 
+.profiles-btn {
+  width: 100%;
+  padding: 10px;
+  background: #253341;
+  border: 1px solid #2f3e4e;
+  border-radius: 8px;
+  color: #1da1f2;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.profiles-btn:hover {
+  background: #1a3a4f;
+  border-color: #1da1f2;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 20px;

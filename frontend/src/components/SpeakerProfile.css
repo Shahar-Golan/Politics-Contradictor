@@ -1,0 +1,514 @@
+/* ── Dark theme matching ChatInterface ── */
+
+.sp-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #0f1923;
+  color: #e1e8ed;
+  padding: 20px;
+}
+
+.sp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sp-header h2 {
+  margin: 0;
+  color: #1da1f2;
+  font-size: 20px;
+}
+
+.sp-back-btn {
+  background: #253341;
+  border: 1px solid #2f3e4e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #8899a6;
+  transition: all 0.2s;
+}
+
+.sp-back-btn:hover {
+  background: #2f3e4e;
+  color: #e1e8ed;
+}
+
+.sp-layout {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Speaker list sidebar ── */
+.sp-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.sp-speaker-card {
+  padding: 10px 12px;
+  border: 1px solid #2f3e4e;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #15202b;
+}
+
+.sp-speaker-card:hover {
+  border-color: #1da1f2;
+  background: #192734;
+}
+
+.sp-speaker-card.active {
+  border-color: #1da1f2;
+  background: #1a3a4f;
+}
+
+.sp-speaker-name {
+  font-weight: 700;
+  color: #e1e8ed;
+  font-size: 13px;
+}
+
+.sp-speaker-meta {
+  font-size: 11px;
+  color: #8899a6;
+  margin-top: 2px;
+}
+
+.sp-speaker-articles {
+  font-size: 11px;
+  color: #1da1f2;
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+/* ── Profile content ── */
+.sp-content {
+  flex: 1;
+  background: #15202b;
+  border: 1px solid #2f3e4e;
+  border-radius: 8px;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
+}
+
+.sp-profile-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2f3e4e;
+}
+
+.sp-profile-header h3 {
+  margin: 0;
+  font-size: 22px;
+  color: #e1e8ed;
+}
+
+.sp-role {
+  margin: 4px 0 0 0;
+  color: #8899a6;
+  font-size: 13px;
+}
+
+/* ── Section tabs ── */
+.sp-section-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2f3e4e;
+}
+
+.sp-tab {
+  padding: 5px 12px;
+  border: 1px solid #2f3e4e;
+  border-radius: 16px;
+  background: #15202b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8899a6;
+  transition: all 0.2s;
+}
+
+.sp-tab:hover {
+  border-color: #1da1f2;
+  color: #1da1f2;
+}
+
+.sp-tab.active {
+  background: #1da1f2;
+  color: #fff;
+  border-color: #1da1f2;
+}
+
+/* ── Bio grid ── */
+.sp-bio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.sp-bio-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sp-bio-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8899a6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sp-bio-value {
+  font-size: 13px;
+  color: #e1e8ed;
+  line-height: 1.4;
+}
+
+/* ── Subsections ── */
+.sp-subsection {
+  margin: 14px 0;
+}
+
+.sp-subsection h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  color: #e1e8ed;
+}
+
+.sp-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.sp-list li {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #ccd6dd;
+  line-height: 1.5;
+}
+
+/* ── Topic cards ── */
+.sp-topic-card {
+  border: 1px solid #2f3e4e;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: #192734;
+}
+
+.sp-topic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sp-topic-header h4 {
+  margin: 0;
+  color: #e1e8ed;
+  font-size: 14px;
+}
+
+.sp-category-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #1a3a4f;
+  color: #1da1f2;
+}
+
+.sp-detail {
+  font-size: 13px;
+  color: #ccd6dd;
+  line-height: 1.5;
+  margin: 6px 0;
+}
+
+.sp-quotes blockquote {
+  margin: 6px 0;
+  padding: 8px 14px;
+  border-left: 3px solid #1da1f2;
+  background: #0f1923;
+  font-size: 12px;
+  color: #8899a6;
+  font-style: italic;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Timeline ── */
+.sp-timeline {
+  position: relative;
+  padding-left: 32px;
+}
+
+.sp-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #2f3e4e;
+}
+
+.sp-timeline-item {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.sp-timeline-dot {
+  position: absolute;
+  left: -28px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1da1f2;
+  border: 2px solid #15202b;
+  box-shadow: 0 0 0 2px #2f3e4e;
+}
+
+.sp-timeline-year {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1da1f2;
+}
+
+.sp-timeline-content h4 {
+  margin: 2px 0 0 0;
+  font-size: 13px;
+  color: #e1e8ed;
+}
+
+.sp-timeline-content p {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: #8899a6;
+  line-height: 1.4;
+}
+
+/* ── Controversies ── */
+.sp-controversy-card {
+  border: 1px solid #2f3e4e;
+  border-left: 3px solid #e0245e;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: #192734;
+}
+
+.sp-controversy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sp-controversy-header h4 {
+  margin: 0;
+  color: #e1e8ed;
+  font-size: 14px;
+}
+
+.sp-year-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #3d1a24;
+  color: #e0245e;
+}
+
+.sp-controversy-card p {
+  font-size: 13px;
+  color: #ccd6dd;
+  line-height: 1.5;
+  margin: 4px 0;
+}
+
+/* ── Relationships ── */
+.sp-rel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sp-rel-group h4 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  color: #e1e8ed;
+}
+
+.sp-co-mentions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sp-co-mention-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #192734;
+  border-radius: 6px;
+  border: 1px solid #2f3e4e;
+}
+
+.sp-co-name {
+  font-weight: 600;
+  color: #e1e8ed;
+  font-size: 13px;
+}
+
+.sp-co-count {
+  font-size: 12px;
+  color: #1da1f2;
+  font-weight: 500;
+}
+
+/* ── Data insights ── */
+.sp-data-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sp-stat-card {
+  flex: 1;
+  padding: 14px;
+  background: #192734;
+  border: 1px solid #2f3e4e;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.sp-stat-number {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1da1f2;
+}
+
+.sp-stat-label {
+  font-size: 11px;
+  color: #8899a6;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.sp-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-keyword {
+  padding: 3px 10px;
+  background: #1a3a4f;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #1da1f2;
+  font-weight: 500;
+}
+
+.sp-keyword small {
+  color: #8899a6;
+  font-weight: 400;
+}
+
+/* ── State bars ── */
+.sp-state-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sp-state-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-state-name {
+  width: 90px;
+  font-size: 12px;
+  color: #e1e8ed;
+  font-weight: 500;
+}
+
+.sp-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #253341;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sp-bar-fill {
+  height: 100%;
+  background: #1da1f2;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.sp-state-count {
+  width: 50px;
+  text-align: right;
+  font-size: 11px;
+  color: #8899a6;
+}
+
+/* ── Loading / empty ── */
+.sp-loading, .sp-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #8899a6;
+  font-size: 15px;
+}
+
+.sp-section p {
+  font-size: 13px;
+  color: #ccd6dd;
+  line-height: 1.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sp-layout {
+    flex-direction: column;
+  }
+  .sp-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .sp-speaker-card {
+    flex: 1;
+    min-width: 130px;
+  }
+  .sp-bio-grid, .sp-rel-grid {
+    grid-template-columns: 1fr;
+  }
+}
