@@ -56,6 +56,25 @@ _INSERT_SQL = (
 )
 
 
+def _set_max_csv_field_size_limit() -> None:
+    """Raise the csv parser field size limit to handle large article bodies.
+
+    Python's default CSV field limit (often 131072 bytes) is too small for
+    long article text columns. We try progressively smaller values if the
+    platform cannot accept ``sys.maxsize`` directly.
+    """
+    limit = sys.maxsize
+    while limit > 0:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+    # Fallback to the default parser behavior if no valid larger limit is found.
+    csv.field_size_limit()
+
+
 # ---------------------------------------------------------------------------
 # Normalisation helpers
 # ---------------------------------------------------------------------------
@@ -175,6 +194,7 @@ def import_csv(
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
     resolved_db = init_db(db_path)
+    _set_max_csv_field_size_limit()
 
     with get_connection(resolved_db) as conn:
         before = row_count(conn, "news_articles")

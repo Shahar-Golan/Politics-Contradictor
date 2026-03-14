@@ -46,6 +46,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from tqdm.auto import tqdm
+
 # Make sure the src package directory is on the path when the script is run
 # directly from the statement-processor/ root.
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -204,7 +206,15 @@ def main(argv: list[str] | None = None) -> int:
     eligible = result.eligible_articles
     if eligible:
         print(f"=== Eligible articles ({len(eligible)}) ===")
-        for i, article in enumerate(eligible, start=1):
+        for i, article in enumerate(
+            tqdm(
+                eligible,
+                desc="Printing eligible articles",
+                unit="article",
+                leave=False,
+            ),
+            start=1,
+        ):
             _print_summary(article, i)
             print()
     else:
@@ -215,7 +225,15 @@ def main(argv: list[str] | None = None) -> int:
         ineligible = [a for a in result.articles if not a.is_eligible]
         if ineligible:
             print(f"=== Ineligible articles ({len(ineligible)}) ===")
-            for i, article in enumerate(ineligible, start=1):
+            for i, article in enumerate(
+                tqdm(
+                    ineligible,
+                    desc="Printing ineligible articles",
+                    unit="article",
+                    leave=False,
+                ),
+                start=1,
+            ):
                 _print_summary(article, i)
                 print()
 
