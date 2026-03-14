@@ -461,3 +461,17 @@ All three tables use `INTEGER PRIMARY KEY AUTOINCREMENT` for `id`.
 - Contradiction detection
 - Dossier generation
 - Supabase sync / production deployment
+
+---
+
+## Key references
+
+| File | Purpose |
+|---|---|
+| `src/db/schema.sql` | Canonical local SQLite schema (single source of truth) |
+| `schemas/stance_extraction.schema.json` | JSON Schema for LLM output validation |
+| `src/contracts/vocab.json` | Controlled vocabulary (topics, stance types, evidence roles) |
+| `docs/stance_extraction_contract.md` | Full extraction contract: fields, vocabularies, examples |
+| `prompts/stance_extraction_prompt.md` | Prompt template for the LLM extractor |
+| `docs/data_model.md` (repo root) | Full schema reference including SQLite and Supabase tables |
+| `docs/migrations.md` (repo root) | How to make schema changes safely |

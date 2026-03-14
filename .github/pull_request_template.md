@@ -48,6 +48,8 @@ Describe how you tested the changes.
 - [ ] `docs/data_model.md` updated (if schema or data flow changed)
 - [ ] `docs/development.md` updated (if setup or conventions changed)
 - [ ] `docs/operations.md` updated (if workflow or CLI changed)
+- [ ] `docs/migrations.md` updated (if schema migration approach changed)
+- [ ] `src/statement-processor/docs/stance_extraction_contract.md` updated (if extraction contract changed)
 - [ ] `README.md` updated (if setup or entrypoints changed)
 
 ### Environment
@@ -56,9 +58,10 @@ Describe how you tested the changes.
 - [ ] `.env.example` updated (if new environment variables added)
 
 ### Scope and design
-- [ ] PR scope is narrow — one logical change
+- [ ] PR scope is narrow — one logical change (see `docs/pr_boundaries.md`)
 - [ ] Business logic is in `src/agents/` or `src/agent_tools/`, not in `api/`
 - [ ] Code is modular and follows existing layer boundaries
+- [ ] statement-processor: schema changes are in `schema.sql`, not scattered across scripts
 
 ---
 
