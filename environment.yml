@@ -1,0 +1,25 @@
+name: politics-contradictor
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - flask
+      - flask-cors
+      - openai
+      - pandas
+      - pinecone
+      - python-dotenv
+      - tiktoken
+      - gunicorn
+      - psycopg2-binary
+      - tqdm
+      - requests
+      - beautifulsoup4
+      - langgraph
+      - langchain-openai
+      - supabase
+      - feedparser
+      - pyyaml
