@@ -29,6 +29,7 @@ class QueryState(TypedDict):
     # Page lookup
     page_found: bool
     page_content: str
+    figure: str           # identified speaker_id
     # Routing
     route: str            # "tweet_agent" | "news_agent" | "both"
     route_reason: str
@@ -42,17 +43,18 @@ class QueryState(TypedDict):
 # ── Nodes ────────────────────────────────────────────────────────────────────
 
 def page_lookup_node(state: QueryState) -> dict:
-    """Check cached figure pages first."""
+    """Look up speaker profile for context enrichment."""
     result = lookup_page(state["query"])
     return {
         "page_found": result["found"],
         "page_content": result["content"] or "",
+        "figure": result.get("figure") or "",
     }
 
 
 def router_node(state: QueryState) -> dict:
-    """Classify the query and decide routing."""
-    result = route_query(state["query"])
+    """Classify the query and decide routing, enriched with page context."""
+    result = route_query(state["query"], page_context=state.get("page_content", ""))
     return {
         "route": result["route"],
         "route_reason": result["reason"],
@@ -175,6 +177,7 @@ def run_query(query: str) -> dict:
         "query": query,
         "page_found": False,
         "page_content": "",
+        "figure": "",
         "route": "",
         "route_reason": "",
         "answer": "",
@@ -212,8 +215,11 @@ def run_query_stream(query: str):
         try:
             # 1. Page Lookup
             emit({"type": "node_start", "node": "page_lookup"})
-            page_result = lookup_page(query)
-            emit({"type": "node_end", "node": "page_lookup"})
+            page_result = lookup_page(query, on_token=on_token)
+            emit({"type": "node_end", "node": "page_lookup", "data": {
+                "found": page_result["found"],
+                "figure": page_result.get("figure"),
+            }})
 
             if page_result["found"]:
                 emit({"type": "done", "data": {
@@ -223,9 +229,13 @@ def run_query_stream(query: str):
                 }})
                 return
 
-            # 2. Router
+            # 2. Router (with page context)
             emit({"type": "node_start", "node": "router"})
-            route_result = route_query(query, on_token=on_token)
+            route_result = route_query(
+                query,
+                on_token=on_token,
+                page_context=page_result.get("content") or "",
+            )
             emit({"type": "node_end", "node": "router", "data": route_result})
 
             route = route_result.get("route", "tweet_agent")

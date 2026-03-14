@@ -34,14 +34,14 @@ You have access to two expert agents:
 
 Given the user's query, decide which agent should handle it.
 If the query could benefit from both perspectives, choose "both".
-
+{page_context_section}
 Respond ONLY with valid JSON:
 {{"route": "tweet_agent" | "news_agent" | "both", "reason": "brief explanation"}}
 
 User query: {query}"""
 
 
-def route_query(query: str, on_token=None) -> dict:
+def route_query(query: str, on_token=None, page_context: str = "") -> dict:
     """
     Classify query and return routing decision.
 
@@ -49,15 +49,28 @@ def route_query(query: str, on_token=None) -> dict:
         dict: {"route": "tweet_agent"|"news_agent"|"both", "reason": str}
     """
     try:
+        page_section = ""
+        if page_context:
+            page_section = (
+                "\nYou also have background context on this figure from our database. "
+                "Use it to make a better routing decision:\n"
+                f"---\n{page_context[:1000]}\n---\n"
+            )
+
+        prompt = ROUTER_PROMPT.format(
+            query=query,
+            page_context_section=page_section,
+        )
+
         if on_token:
             content = ""
-            for chunk in llm.stream(ROUTER_PROMPT.format(query=query)):
+            for chunk in llm.stream(prompt):
                 token = chunk.content or ""
                 content += token
                 on_token(token)
             content = content.strip()
         else:
-            response = llm.invoke(ROUTER_PROMPT.format(query=query))
+            response = llm.invoke(prompt)
             content = response.content.strip()
 
         # Parse JSON from response
