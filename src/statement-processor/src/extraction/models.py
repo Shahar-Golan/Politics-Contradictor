@@ -304,8 +304,8 @@ class ExtractionConfig:
         Path to write the JSONL debug log.  ``None`` disables file logging.
     """
 
-    model_name: str = "gpt-4o-mini"
+    model_name: str = "gpt-5-nano"
     max_chunk_chars: int = 6_000
     max_retries: int = 2
-    temperature: float = 0.0
+    temperature: float = 1
     debug_log_path: Optional[str] = None
