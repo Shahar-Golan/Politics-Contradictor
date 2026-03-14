@@ -31,7 +31,7 @@ _PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 _PROMPT_FILE = _PROMPTS_DIR / "stance_extraction_prompt.md"
 
 
-def _get_prompt_path(prompt_path: Optional[Path | str] = None) -> Path:
+def _get_prompt_path(prompt_path: Path | str | None = None) -> Path:
     """Return the resolved path to the prompt file.
 
     Parameters
@@ -125,7 +125,7 @@ def _parse_prompt_file(raw: str) -> tuple[str, str]:
 def load_prompt(
     doc_id: str,
     article_text: str,
-    prompt_path: Optional[Path | str] = None,
+    prompt_path: Path | str | None = None,
 ) -> tuple[str, str]:
     """Load the prompt contract and render it with article-specific values.
 

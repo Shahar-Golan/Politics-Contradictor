@@ -75,7 +75,7 @@ class LLMClient:
         api_key: Optional[str] = None,
     ) -> None:
         try:
-            import openai  # noqa: F401 – imported to verify availability
+            import openai  # noqa: F401 - imported to verify availability
             from openai import OpenAI
         except ImportError as exc:
             raise LLMClientError(

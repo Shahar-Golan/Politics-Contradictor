@@ -79,8 +79,11 @@ def _pack_segments(segments: list[str], max_chars: int) -> list[str]:
             current_parts = [seg]
             current_len = seg_len
         else:
+            if current_parts:
+                current_len += 2 + seg_len
+            else:
+                current_len = seg_len
             current_parts.append(seg)
-            current_len += (2 if current_parts else 0) + seg_len
 
     if current_parts:
         chunks.append("\n\n".join(current_parts))
