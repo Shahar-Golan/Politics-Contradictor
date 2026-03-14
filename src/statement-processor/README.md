@@ -11,22 +11,30 @@ before any integration with Supabase/Postgres is required.
 
 ```
 statement-processor/
-├── data/                           # Local data directory (git-tracked skeleton only)
-│   └── .gitkeep                    # Placeholder – place CSV exports here
-├── scripts/                        # Developer-facing entry points
-│   ├── init_local_db.py            # Create/update the SQLite database
-│   └── import_news_articles_csv.py # Import a news_articles CSV into SQLite
+├── data/                               # Local data directory (git-tracked skeleton only)
+│   └── .gitkeep                        # Placeholder – place CSV exports here
+├── scripts/                            # Developer-facing entry points
+│   ├── init_local_db.py                # Create/update the SQLite database
+│   ├── import_news_articles_csv.py     # Import a news_articles CSV into SQLite
+│   └── select_candidate_articles.py   # Run deterministic article selection
 ├── src/
-│   └── db/
-│       ├── __init__.py
-│       ├── schema.sql              # Canonical SQL schema (single source of truth)
-│       ├── sqlite_utils.py         # Low-level SQLite helpers
-│       ├── init_db.py              # Schema bootstrap logic
-│       └── import_news_articles.py # CSV → SQLite ingestion logic
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── schema.sql                  # Canonical SQL schema (single source of truth)
+│   │   ├── sqlite_utils.py             # Low-level SQLite helpers
+│   │   ├── init_db.py                  # Schema bootstrap logic
+│   │   └── import_news_articles.py     # CSV → SQLite ingestion logic
+│   └── selection/
+│       ├── __init__.py                 # Public API re-exports
+│       ├── keywords.py                 # Configurable keyword lists & politician aliases
+│       ├── models.py                   # Typed data models (ScoredArticle, SelectionConfig, …)
+│       ├── scoring.py                  # Rule-based article scoring logic
+│       └── article_selector.py        # Main SQLite-backed selection function
 ├── tests/
 │   ├── conftest.py
-│   └── test_db_bootstrap.py       # Pytest test suite
-└── README.md                      # This file
+│   ├── test_db_bootstrap.py           # Pytest test suite – DB bootstrap
+│   └── test_article_selection.py      # Pytest test suite – article selection
+└── README.md                          # This file
 ```
 
 ---
@@ -149,6 +157,103 @@ SELECT id, doc_id, title, date FROM news_articles LIMIT 5;
 
 ---
 
+## Step 4 – Run the article selector
+
+After importing your data, you can run the deterministic article selector to
+identify which articles are likely to contain meaningful politician stance content.
+
+### Quick start (default: Trump and Biden)
+
+```bash
+# From the statement-processor directory:
+python scripts/select_candidate_articles.py
+```
+
+### Select for a specific politician
+
+```bash
+python scripts/select_candidate_articles.py --politicians Trump
+python scripts/select_candidate_articles.py --politicians Biden
+python scripts/select_candidate_articles.py --politicians Trump Biden
+```
+
+### Adjust the minimum eligibility score
+
+```bash
+# Only return articles with score >= 3 (more aggressive filtering):
+python scripts/select_candidate_articles.py --min-score 3
+
+# Return all articles that mention a politician (score >= 0):
+python scripts/select_candidate_articles.py --min-score 0
+```
+
+### Limit the number of results
+
+```bash
+python scripts/select_candidate_articles.py --max-results 50
+```
+
+### Filter by date range
+
+```bash
+python scripts/select_candidate_articles.py \
+    --date-from 2024-01-01 \
+    --date-to 2024-12-31
+```
+
+### Save eligible doc_ids for downstream extraction
+
+```bash
+python scripts/select_candidate_articles.py \
+    --politicians Trump \
+    --min-score 2 \
+    --output /tmp/trump_candidates.txt
+```
+
+The output file contains one `doc_id` per line.
+
+### Show ineligible articles too
+
+```bash
+python scripts/select_candidate_articles.py --show-ineligible
+```
+
+---
+
+## Article selection scoring
+
+The selector uses deterministic, rule-based scoring.  Each rule contributes a
+fixed integer weight.  No LLM or external API is used.
+
+| Rule | Weight | Signal |
+|---|---|---|
+| `politician_in_speakers` | +3 | Politician in `speakers_mentioned` |
+| `reporting_verb_in_title` | +2 | Title contains a reporting/action verb |
+| `policy_topic_in_title` | +2 | Title contains a policy keyword |
+| `quote_marker_in_text` | +2 | Text contains a direct-quote marker |
+| `policy_topic_in_text` | +1 | Text contains a policy keyword |
+| `politician_in_title` | +1 | Politician alias appears in title |
+| `text_length_ok` | +1 | Text meets minimum length (≥150 chars) |
+| `low_priority_signal_in_title` | −2 | Title contains a low-priority signal (e.g. "poll") |
+| `low_priority_signal_in_text` | −1 | Text contains a low-priority signal |
+| `text_too_short` | −2 | Text is present but below minimum length |
+
+An article is **eligible** when its total score ≥ `min_score` (default: 1).
+
+### Extending the selector
+
+All keyword lists and politician aliases live in
+`src/selection/keywords.py`:
+
+- Add new reporting verbs to `REPORTING_VERBS`.
+- Add new policy keywords to `POLICY_TOPICS`.
+- Add a new politician by adding an entry to `POLITICIAN_ALIASES`:
+  ```python
+  "Harris": frozenset({"harris", "kamala harris", "vice president harris", "harris's"}),
+  ```
+
+---
+
 ## Running the tests
 
 ```bash
@@ -170,6 +275,12 @@ The test suite covers:
 - `doc_id` uniqueness / duplicate handling
 - row count verification
 - `speakers_mentioned` normalisation (JSON array, CSV string, empty)
+- article scoring rule matching (all rules)
+- politician alias detection (Trump, Biden)
+- end-to-end selection against a SQLite fixture database
+- determinism (same input → same output)
+- `SelectionConfig` options (min_score, max_results, date range)
+- error handling (unknown politician, missing database)
 
 ---
 
