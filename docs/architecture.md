@@ -16,6 +16,7 @@ The system is built with LangGraph, Flask, React (Vite), Pinecone (vector search
 | `src/agents/` | Agent node implementations — each file is one agent; calls tools and the LLM |
 | `src/agent_tools/` | Shared, reusable tool functions — Pinecone search, web scraping, URL extraction |
 | `src/rss-extractor/` | RSS ingestion module — scrapes news feeds and exports to CSV and Supabase |
+| `src/statement-processor/` | Local-first extraction pipeline — local SQLite schema, CSV ingestion, article selection, stance extraction contract, and tests; runs entirely offline before Supabase integration |
 | `api/` | Flask application — HTTP handlers and SSE streaming only |
 | `frontend/` | React UI (Vite) — chat interface and pipeline flowchart |
 | `test/` | All tests and debugging utilities |
@@ -121,6 +122,7 @@ Embedding model: `RPRTHPB-text-embedding-3-small` via `https://api.llmod.ai/v1`
 | Phase | Description | Status |
 |---|---|---|
 | 1 | System B — interactive query graph + UI | **COMPLETE** |
+| 1.5 | statement-processor — local SQLite foundation, CSV ingestion, article selection, extraction contract | **COMPLETE** |
 | 2 | Topic Extraction | NOT STARTED |
 | 3 | Contradiction Detection | NOT STARTED |
 | 4 | Figure Pages + full System A | NOT STARTED |
@@ -135,3 +137,4 @@ Embedding model: `RPRTHPB-text-embedding-3-small` via `https://api.llmod.ai/v1`
 - `src/agents/ingestion_agent.py`, `topic_extractor.py`, `contradiction_finder.py`, `page_builder.py` are all planned but not yet implemented.
 - The `src/rss-extractor/` module is functional but not yet integrated into the main LangGraph pipeline.
 - `src/agent/` contains a legacy ReAct agent kept for backward compatibility — it is not part of the current System B graph.
+- The `src/statement-processor/` pipeline has a complete local foundation (schema, ingestion, selection, contract) but the LLM-backed extraction step is not yet implemented.

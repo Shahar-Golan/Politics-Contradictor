@@ -13,6 +13,12 @@ before any integration with Supabase/Postgres is required.
 statement-processor/
 ├── data/                               # Local data directory (git-tracked skeleton only)
 │   └── .gitkeep                        # Placeholder – place CSV exports here
+├── docs/
+│   └── stance_extraction_contract.md   # Extraction contract: fields, vocabularies, examples
+├── prompts/
+│   └── stance_extraction_prompt.md     # Prompt template for the LLM extractor
+├── schemas/
+│   └── stance_extraction.schema.json   # JSON Schema (draft 2020-12) for LLM output validation
 ├── scripts/                            # Developer-facing entry points
 │   ├── init_local_db.py                # Create/update the SQLite database
 │   ├── import_news_articles_csv.py     # Import a news_articles CSV into SQLite
@@ -24,16 +30,23 @@ statement-processor/
 │   │   ├── sqlite_utils.py             # Low-level SQLite helpers
 │   │   ├── init_db.py                  # Schema bootstrap logic
 │   │   └── import_news_articles.py     # CSV → SQLite ingestion logic
-│   └── selection/
-│       ├── __init__.py                 # Public API re-exports
-│       ├── keywords.py                 # Configurable keyword lists & politician aliases
-│       ├── models.py                   # Typed data models (ScoredArticle, SelectionConfig, …)
-│       ├── scoring.py                  # Rule-based article scoring logic
-│       └── article_selector.py        # Main SQLite-backed selection function
+│   ├── selection/
+│   │   ├── __init__.py                 # Public API re-exports
+│   │   ├── keywords.py                 # Configurable keyword lists & politician aliases
+│   │   ├── models.py                   # Typed data models (ScoredArticle, SelectionConfig, …)
+│   │   ├── scoring.py                  # Rule-based article scoring logic
+│   │   └── article_selector.py        # Main SQLite-backed selection function
+│   └── contracts/
+│       ├── __init__.py
+│       └── vocab.json                  # Controlled vocabulary (topics, stance types, etc.)
 ├── tests/
 │   ├── conftest.py
-│   ├── test_db_bootstrap.py           # Pytest test suite – DB bootstrap
-│   └── test_article_selection.py      # Pytest test suite – article selection
+│   ├── fixtures/
+│   │   ├── valid/                      # Valid JSON test cases (zero_events, single_direct_quote, …)
+│   │   └── invalid/                    # Invalid JSON test cases (missing_required_fields, …)
+│   ├── test_db_bootstrap.py           # Pytest test suite – DB bootstrap & CSV import
+│   ├── test_article_selection.py      # Pytest test suite – article selection & scoring
+│   └── test_contract.py               # Pytest test suite – JSON schema validation
 └── README.md                          # This file
 ```
 
@@ -281,6 +294,10 @@ The test suite covers:
 - determinism (same input → same output)
 - `SelectionConfig` options (min_score, max_results, date range)
 - error handling (unknown politician, missing database)
+- JSON schema validation (valid and invalid extractor output)
+- controlled vocabulary enforcement
+- atomicity rules (merged propositions are rejected)
+- required vs optional field handling
 
 ---
 
@@ -314,3 +331,17 @@ All three tables use `INTEGER PRIMARY KEY AUTOINCREMENT` for `id`.
 - Contradiction detection
 - Dossier generation
 - Supabase sync / production deployment
+
+---
+
+## Key references
+
+| File | Purpose |
+|---|---|
+| `src/db/schema.sql` | Canonical local SQLite schema (single source of truth) |
+| `schemas/stance_extraction.schema.json` | JSON Schema for LLM output validation |
+| `src/contracts/vocab.json` | Controlled vocabulary (topics, stance types, evidence roles) |
+| `docs/stance_extraction_contract.md` | Full extraction contract: fields, vocabularies, examples |
+| `prompts/stance_extraction_prompt.md` | Prompt template for the LLM extractor |
+| `docs/data_model.md` (repo root) | Full schema reference including SQLite and Supabase tables |
+| `docs/migrations.md` (repo root) | How to make schema changes safely |
