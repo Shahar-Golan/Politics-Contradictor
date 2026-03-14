@@ -1,0 +1,25 @@
+{
+  "doc_id": "article-tariff-normalized-001",
+  "stance_events": [
+    {
+      "politician": "Donald Trump",
+      "topic": "trade",
+      "subtopic": "tariffs on China",
+      "normalized_proposition": "Raise tariffs on china",
+      "stance_direction": "support",
+      "stance_mode": "promise",
+      "speaker": "Donald Trump",
+      "target_entity": "China",
+      "event_date": "2024-01-12",
+      "event_date_precision": "day",
+      "evidence_role": "reported_speech",
+      "quote_text": null,
+      "quote_start_char": null,
+      "quote_end_char": null,
+      "paraphrase": "Trump indicated he would levy high tariffs on Chinese imports if elected.",
+      "confidence": 0.88,
+      "validation_status": "valid",
+      "raw_proposition": "higher tariffs on Chinese imports"
+    }
+  ]
+}

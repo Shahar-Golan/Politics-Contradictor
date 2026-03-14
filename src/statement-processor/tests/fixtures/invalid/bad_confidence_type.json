@@ -1,0 +1,14 @@
+{
+  "doc_id": "article-bad-confidence-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "economy",
+      "normalized_proposition": "Joe Biden supports higher wages for workers.",
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "evidence_role": "reported_speech",
+      "confidence": "high"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "doc_id": "article-bad-date-001",
+  "stance_events": [
+    {
+      "politician": "Donald Trump",
+      "topic": "trade",
+      "normalized_proposition": "Donald Trump supports higher tariffs on China.",
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "evidence_role": "direct_quote",
+      "quote_text": "We need big tariffs.",
+      "quote_start_char": 0,
+      "quote_end_char": 20,
+      "event_date": "January 2024",
+      "event_date_precision": "day",
+      "confidence": 0.9
+    }
+  ]
+}

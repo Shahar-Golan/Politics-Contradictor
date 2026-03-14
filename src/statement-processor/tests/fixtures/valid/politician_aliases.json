@@ -1,0 +1,29 @@
+{
+  "doc_id": "article-alias-001",
+  "stance_events": [
+    {
+      "politician": "Trump",
+      "topic": "immigration",
+      "normalized_proposition": "Trump opposes allowing asylum seekers to enter the United States.",
+      "stance_direction": "oppose",
+      "stance_mode": "statement",
+      "evidence_role": "direct_quote",
+      "quote_text": "We will shut down the border on day one.",
+      "quote_start_char": 0,
+      "quote_end_char": 40,
+      "confidence": 0.92,
+      "notes": null
+    },
+    {
+      "politician": "Biden",
+      "topic": "economy",
+      "normalized_proposition": "Biden supports raising the federal minimum wage.",
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "evidence_role": "reported_speech",
+      "paraphrase": "Biden called for a higher minimum wage.",
+      "confidence": 0.85,
+      "notes": null
+    }
+  ]
+}
