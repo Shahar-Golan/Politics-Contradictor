@@ -26,7 +26,7 @@ An autonomous political intelligence system that monitors public figures, cross-
 
 ```bash
 conda env create -f environment.yml
-conda activate politics-contradictor
+conda activate politician-tracker
 ```
 
 `environment.yml` is the single source of truth for all Python dependencies.
@@ -44,6 +44,8 @@ SUPABASE_URL=your_url
 SUPABASE_KEY=your_key
 ```
 
+Copy `.env.example` for the full list of required and optional variables.
+
 ### 3. Install frontend dependencies
 
 ```bash
@@ -55,7 +57,7 @@ npm install
 
 **Backend** (Terminal 1):
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python api/index.py
 ```
 
@@ -74,9 +76,13 @@ Open `http://localhost:5173` in your browser.
 | Document | Contents |
 |---|---|
 | [`docs/architecture.md`](docs/architecture.md) | System design, module boundaries, LangGraph systems, implementation phases |
-| [`docs/data_model.md`](docs/data_model.md) | Supabase tables, Pinecone indexes, data flow |
-| [`docs/development.md`](docs/development.md) | Local setup, coding conventions, type hinting requirements, test instructions |
-| [`docs/operations.md`](docs/operations.md) | API endpoints, configuration files, data ingestion, CLI scripts |
+| [`docs/data_model.md`](docs/data_model.md) | Supabase tables, local SQLite schema, Pinecone indexes, data flow |
+| [`docs/development.md`](docs/development.md) | Local setup, coding conventions, type hinting requirements, test instructions, model configuration |
+| [`docs/operations.md`](docs/operations.md) | API endpoints, configuration files, data ingestion, statement-processor workflow, CLI scripts |
+| [`docs/migrations.md`](docs/migrations.md) | Schema change guidance for local SQLite and Supabase |
+| [`docs/pr_boundaries.md`](docs/pr_boundaries.md) | Expected PR scope by pipeline component |
+| [`src/statement-processor/README.md`](src/statement-processor/README.md) | statement-processor local workflow: database setup, CSV import, article selection, tests |
+| [`src/statement-processor/docs/stance_extraction_contract.md`](src/statement-processor/docs/stance_extraction_contract.md) | Extraction contract: what the extractor consumes and emits, field definitions, controlled vocabularies |
 
 ---
 
@@ -95,8 +101,10 @@ Politics-Contradictor/
 │   ├── agents/                     # LangGraph agent node implementations
 │   ├── agent_tools/                # Shared reusable tool functions
 │   ├── graphs/                     # LangGraph StateGraph definitions
-│   └── rss-extractor/              # RSS ingestion module
+│   ├── rss-extractor/              # RSS ingestion module
+│   └── statement-processor/        # Local-first extraction pipeline (offline, SQLite)
 ├── test/                           # Tests and utilities
+├── .env.example                    # Environment variable reference
 ├── environment.yml                 # Conda environment (source of truth)
 └── requirements.txt                # pip fallback
 ```

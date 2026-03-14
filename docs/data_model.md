@@ -2,12 +2,13 @@
 
 ## Overview
 
-Data flows through two storage systems:
+Data flows through three storage layers:
 
-- **Supabase (PostgreSQL)** — structured records: tweets, articles, topics, contradictions, figure pages, agent run logs
+- **Local SQLite** — used by the `statement-processor` pipeline for offline development (local-first, no external services required)
+- **Supabase (PostgreSQL)** — the production database: tweets, articles, topics, contradictions, figure pages, agent run logs
 - **Pinecone** — vector embeddings for semantic search over tweets and news articles
 
-Raw text is stored in Supabase. Embeddings in Pinecone carry metadata that mirrors the Supabase fields needed for filtering and display.
+Raw text is stored in Supabase. Embeddings in Pinecone carry metadata that mirrors the Supabase fields needed for filtering and display. The local SQLite schema mirrors the Supabase `news_articles` table and adds extraction-specific tables (`stance_records`, `stance_relations`) used during local development.
 
 ---
 
@@ -207,6 +208,99 @@ Contradiction Finder  → contradictions table
                         ↓ Phase 4
 Page Builder agent    → figure_pages table
 ```
+
+---
+
+## Local SQLite schema (statement-processor)
+
+The `statement-processor` pipeline uses a local SQLite database for offline
+development. The schema is defined in:
+
+```
+src/statement-processor/src/db/schema.sql
+```
+
+This is the **canonical local schema** and the single source of truth for the
+three local tables. Apply or re-apply it with:
+
+```bash
+cd src/statement-processor
+python scripts/init_local_db.py
+```
+
+See `docs/migrations.md` for guidance on making schema changes.
+
+### `news_articles` (local mirror)
+
+A local copy of the Supabase `news_articles` table, populated from a CSV export.
+
+| Column | SQLite type | Notes |
+|---|---|---|
+| `id` | `INTEGER PRIMARY KEY AUTOINCREMENT` | Local surrogate key |
+| `doc_id` | `TEXT NOT NULL UNIQUE` | SHA-256 content hash — deduplication key |
+| `title` | `TEXT` | Article headline |
+| `text` | `TEXT` | Full article body |
+| `date` | `TEXT` | Publication date (string, format varies by source) |
+| `media_name` | `TEXT` | Publication name |
+| `media_type` | `TEXT` | `newspaper` / `radio` / `tv` / `broadcast` |
+| `source_platform` | `TEXT` | `Google` / `Twitter` |
+| `state` | `TEXT` | US state (where applicable) |
+| `city` | `TEXT` | City (where applicable) |
+| `link` | `TEXT` | Original article URL |
+| `speakers_mentioned` | `TEXT DEFAULT '[]'` | JSON array string (Postgres `TEXT[]` → SQLite `TEXT`) |
+| `created_at` | `TEXT NOT NULL` | ISO-8601 timestamp string |
+
+**Type mapping note:** `speakers_mentioned` is stored as a JSON array string
+(e.g. `'["Alice","Bob"]'`) rather than a Postgres `TEXT[]` array. The
+ingestion layer normalises comma-separated strings to this format automatically.
+
+### `stance_records`
+
+One row per atomic political stance event extracted from a news article. Populated
+by the stance extractor (planned). The column names align directly with the
+`StanceEvent` fields defined in
+`src/statement-processor/docs/stance_extraction_contract.md`.
+
+| Column | SQLite type | Notes |
+|---|---|---|
+| `id` | `INTEGER PRIMARY KEY AUTOINCREMENT` | Local surrogate key |
+| `doc_id` | `TEXT NOT NULL` | FK → `news_articles.doc_id` |
+| `politician` | `TEXT` | Full name of the politician |
+| `topic` | `TEXT` | High-level policy area (controlled vocabulary) |
+| `subtopic` | `TEXT` | Optional finer-grained sub-category |
+| `normalized_proposition` | `TEXT` | Single declarative sentence summarising the stance |
+| `stance_direction` | `TEXT` | `support` / `oppose` / `mixed` / `unclear` |
+| `stance_mode` | `TEXT` | `statement` / `action` / `promise` / `accusation` / `value_judgment` |
+| `speaker` | `TEXT` | Who delivered the statement (may differ from politician) |
+| `event_date` | `TEXT` | ISO-8601 date string (`YYYY`, `YYYY-MM`, or `YYYY-MM-DD`) |
+| `event_date_precision` | `TEXT` | `day` / `month` / `year` / `approximate` |
+| `evidence_role` | `TEXT` | `direct_quote` / `reported_speech` / `inferred_from_action` / `headline_claim` / `summary_statement` |
+| `quote_text` | `TEXT` | Verbatim quote from the article |
+| `quote_start_char` | `INTEGER` | 0-based start offset of `quote_text` in the article |
+| `quote_end_char` | `INTEGER` | Exclusive end offset of `quote_text` in the article |
+| `paraphrase` | `TEXT` | Brief paraphrase of the supporting evidence |
+| `confidence` | `REAL` | Extractor confidence score (0.0–1.0) |
+| `review_status` | `TEXT DEFAULT 'pending'` | `pending` / `approved` / `rejected` |
+| `created_at` | `TEXT NOT NULL` | ISO-8601 timestamp string |
+| `updated_at` | `TEXT NOT NULL` | ISO-8601 timestamp string |
+
+Controlled vocabulary values for `topic`, `stance_direction`, `stance_mode`,
+and `evidence_role` are defined in `src/statement-processor/src/contracts/vocab.json`.
+
+### `stance_relations`
+
+Pairwise relations between `stance_records` rows — for example, contradiction
+or reinforcement relationships. Populated by relation generation logic (planned).
+
+| Column | SQLite type | Notes |
+|---|---|---|
+| `id` | `INTEGER PRIMARY KEY AUTOINCREMENT` | Local surrogate key |
+| `from_stance_id` | `INTEGER NOT NULL` | FK → `stance_records.id` |
+| `to_stance_id` | `INTEGER NOT NULL` | FK → `stance_records.id` |
+| `relation_type` | `TEXT NOT NULL` | e.g. `contradiction`, `reinforcement` |
+| `confidence` | `REAL` | Confidence in the relation (0.0–1.0) |
+| `reason` | `TEXT` | Explanation of the relation |
+| `created_at` | `TEXT NOT NULL` | ISO-8601 timestamp string |
 
 ---
 

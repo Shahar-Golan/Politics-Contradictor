@@ -12,7 +12,7 @@ The system has two operational modes:
 ## Running the backend API
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python api/index.py
 ```
 
@@ -55,11 +55,14 @@ The streaming endpoint returns `text/event-stream` with events: `node_start`, `n
 | File | Purpose |
 |---|---|
 | `.env` | Runtime secrets and service URLs — never committed |
+| `.env.example` | Reference for all required and optional environment variables |
 | `environment.yml` | Python/conda environment — source of truth for dependencies |
 | `src/rss-extractor/config/politicians.yaml` | List of tracked public figures |
 | `src/rss-extractor/config/feeds.yaml` | RSS feed URLs per politician |
 | `src/rss-extractor/config/topics.yaml` | Political topic taxonomy |
 | `src/rss-extractor/config/settings.yaml` | RSS extractor runtime settings |
+| `src/statement-processor/src/contracts/vocab.json` | Controlled vocabulary for stance extraction |
+| `src/statement-processor/schemas/stance_extraction.schema.json` | JSON Schema for LLM output validation |
 
 ### Required environment variables
 
@@ -81,7 +84,7 @@ SUPABASE_KEY=          # Supabase anon or service role key
 Tweets are loaded into Supabase and embedded into the `politics` Pinecone index using:
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python src/load_tweets_to_pinecone.py
 ```
 
@@ -90,7 +93,7 @@ python src/load_tweets_to_pinecone.py
 News articles are loaded into Supabase and embedded into the `politics-news` Pinecone index using:
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python src/load_news_to_supabase_and_pinecone.py
 ```
 
@@ -99,13 +102,71 @@ python src/load_news_to_supabase_and_pinecone.py
 The RSS extractor scrapes configured feeds and exports results to CSV and/or Supabase:
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python src/rss-extractor/scrape.py
 python src/rss-extractor/export_csv.py
 python src/rss-extractor/push_to_supabase.py
 ```
 
 Feed configuration is in `src/rss-extractor/config/feeds.yaml`. Politicians are listed in `src/rss-extractor/config/politicians.yaml`.
+
+---
+
+## statement-processor local pipeline
+
+The `statement-processor` pipeline runs entirely offline using a local SQLite
+database. No API keys or external services are required for any of these steps.
+
+### 1. Initialise the local database
+
+```bash
+cd src/statement-processor
+python scripts/init_local_db.py
+```
+
+Creates `data/political_dossier.db` with tables: `news_articles`, `stance_records`,
+`stance_relations`.
+
+### 2. Import news articles
+
+Place a `news_articles.csv` export at `src/statement-processor/data/news_articles.csv`,
+then:
+
+```bash
+python scripts/import_news_articles_csv.py
+```
+
+### 3. Select candidate articles
+
+```bash
+python scripts/select_candidate_articles.py --politicians Trump Biden
+```
+
+Common options:
+
+```bash
+# Adjust minimum score (default: 1)
+python scripts/select_candidate_articles.py --min-score 3
+
+# Limit results
+python scripts/select_candidate_articles.py --max-results 50
+
+# Filter by date range
+python scripts/select_candidate_articles.py --date-from 2024-01-01 --date-to 2024-12-31
+
+# Save doc_ids to a file for downstream extraction
+python scripts/select_candidate_articles.py --politicians Trump --output /tmp/trump_candidates.txt
+```
+
+### 4. Run the test suite
+
+```bash
+cd src/statement-processor
+pytest tests/ -v
+```
+
+For schema change guidance, see `docs/migrations.md`.  
+For the extraction contract, see `src/statement-processor/docs/stance_extraction_contract.md`.
 
 ---
 

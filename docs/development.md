@@ -23,7 +23,7 @@ cd Politics-Contradictor
 
 ```bash
 conda env create -f environment.yml
-conda activate politics-contradictor
+conda activate politician-tracker
 ```
 
 To update an existing environment after `environment.yml` changes:
@@ -45,7 +45,7 @@ SUPABASE_URL=your_url
 SUPABASE_KEY=your_key
 ```
 
-See `.env.example` for the full list of required variables.
+See `.env.example` in the repository root for the full list of required and optional variables, including statement-processor-specific settings.
 
 ### 4. Install frontend dependencies
 
@@ -62,7 +62,7 @@ cd ..
 ### Backend (Flask API)
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python api/index.py
 ```
 
@@ -83,7 +83,7 @@ Open two terminals:
 
 **Terminal 1 — backend:**
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python api/index.py
 ```
 
@@ -100,11 +100,120 @@ Then open `http://localhost:5173`.
 ## Running tests
 
 ```bash
-conda activate politics-contradictor
+conda activate politician-tracker
 python -m pytest test/ -v
 ```
 
 Tests must not rely on live external services. Mock or patch Pinecone, Supabase, and OpenAI calls. Follow the `unittest` + `mock` style used in `test/test_endpoints.py`.
+
+### statement-processor tests
+
+The statement-processor module has its own test suite:
+
+```bash
+cd src/statement-processor
+pytest tests/ -v
+```
+
+Or from the repository root:
+
+```bash
+pytest src/statement-processor/tests/ -v
+```
+
+These tests run entirely offline — no API keys or external services required.
+
+---
+
+## statement-processor local workflow
+
+The `src/statement-processor/` directory is a self-contained local pipeline.
+It runs entirely offline using SQLite — no Supabase, Pinecone, or LLM access
+required.
+
+### 1. Initialise the local database
+
+```bash
+cd src/statement-processor
+python scripts/init_local_db.py
+```
+
+This creates `data/political_dossier.db` with three tables: `news_articles`,
+`stance_records`, and `stance_relations`.
+
+### 2. Import news articles from CSV
+
+Export `news_articles` from Supabase (or another source) and place the file at
+`src/statement-processor/data/news_articles.csv`, then run:
+
+```bash
+python scripts/import_news_articles_csv.py
+```
+
+### 3. Run article selection
+
+```bash
+python scripts/select_candidate_articles.py --politicians Trump Biden
+```
+
+See `src/statement-processor/README.md` for the full range of options.
+
+### 4. Run the tests
+
+```bash
+pytest tests/ -v
+```
+
+See `src/statement-processor/README.md` for full workflow details.
+
+---
+
+## Model configuration
+
+The project uses an **OpenAI-compatible endpoint** provided by
+[llmod.ai](https://llmod.ai) rather than the direct OpenAI API.
+
+### Where models are configured
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `OPENAI_API_KEY` | API key for llmod.ai (not a direct OpenAI key) | Required |
+| `BASE_URL` | LLM endpoint base URL | `https://api.llmod.ai/v1` |
+| `GPT_MODEL` | Chat completion model name | `RPRTHPB-gpt-5-mini` |
+
+All three variables must be set in `.env`. See `.env.example` for the full list.
+
+### Which pipeline components use LLMs
+
+| Component | Uses LLM? | Notes |
+|---|---|---|
+| System B router | ✅ Yes | Classifies user queries as `tweet` / `news` / `both` |
+| System B tweet agent | ✅ Yes | Answers questions using Pinecone tweet search |
+| System B news agent | ✅ Yes | Answers questions using Pinecone news search |
+| Article selection | ❌ No | Deterministic rule-based scoring, no LLM |
+| CSV ingestion | ❌ No | Pure data normalisation |
+| DB schema bootstrap | ❌ No | Pure SQL |
+| Stance extractor (planned) | ✅ Yes | Will call the LLM to extract stance events from articles |
+| Contradiction finder (planned) | ✅ Yes | Will compare stances using the LLM |
+| Page builder (planned) | ✅ Yes | Will synthesise per-figure summaries |
+
+### Changing the model
+
+1. Update `GPT_MODEL` in `.env` to the new model name.
+2. If switching providers (not just model names), also update `BASE_URL` and
+   `OPENAI_API_KEY`.
+3. The model name uses a vendor-specific `RPRTHPB-` prefix on the llmod.ai
+   endpoint — this prefix selects the underlying model on that platform.
+4. Verify the change works by running the interactive query endpoint manually
+   before opening a PR.
+
+### Cost and latency notes
+
+- All LLM calls currently go through llmod.ai, not direct OpenAI.
+- Local development (article selection, DB bootstrap, CSV import) uses no LLM
+  calls and incurs no cost.
+- The stance extractor (planned) will process articles one at a time. Cost and
+  latency per article will depend on article length and the chosen model.
 
 ---
 
@@ -191,14 +300,24 @@ Politics-Contradictor/
 │   ├── architecture.md
 │   ├── data_model.md
 │   ├── development.md              # This file
-│   └── operations.md
+│   ├── migrations.md               # Schema change guidance
+│   ├── operations.md
+│   └── pr_boundaries.md            # PR scope guidance by component
 ├── frontend/                       # React (Vite)
 ├── src/
 │   ├── agents/                     # LangGraph agent node implementations
 │   ├── agent_tools/                # Shared reusable tool functions
 │   ├── graphs/                     # LangGraph StateGraph definitions
-│   └── rss-extractor/              # RSS ingestion module
-├── test/                           # Tests and utilities
+│   ├── rss-extractor/              # RSS ingestion module
+│   └── statement-processor/        # Local-first extraction pipeline (offline, SQLite)
+│       ├── docs/                   # Contract and schema documentation
+│       ├── prompts/                # Prompt templates
+│       ├── schemas/                # JSON Schema for LLM output validation
+│       ├── scripts/                # Developer entry points
+│       ├── src/                    # Python library code
+│       └── tests/                  # Pytest test suite (runs offline)
+├── test/                           # Tests and utilities for the Flask API
+├── .env.example                    # Environment variable reference (copy to .env)
 ├── environment.yml                 # Conda environment (source of truth)
 ├── requirements.txt                # pip fallback (keep consistent with environment.yml)
 └── README.md
