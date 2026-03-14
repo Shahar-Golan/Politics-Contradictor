@@ -52,6 +52,8 @@ import logging
 import sys
 from pathlib import Path
 
+from tqdm.auto import tqdm
+
 # ── Make src/ importable when the script is run from statement-processor/ ──
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _SRC_DIR = _SCRIPT_DIR.parent / "src"
@@ -160,7 +162,11 @@ def _load_doc_ids(args: argparse.Namespace) -> list[str]:
         sys.exit(1)
 
     lines = path.read_text(encoding="utf-8").splitlines()
-    doc_ids = [line.strip() for line in lines if line.strip()]
+    doc_ids = [
+        line.strip()
+        for line in tqdm(lines, desc="Reading doc_ids", unit="line", leave=False)
+        if line.strip()
+    ]
     if not doc_ids:
         _log.error("doc_ids file is empty: %s", path)
         sys.exit(1)
@@ -202,7 +208,9 @@ def main() -> None:
 
     # Run extraction.
     _log.info("Starting extraction with model=%r …", config.model_name)
-    results = extract_articles(articles, config=config)
+    with tqdm(total=1, desc="Running extraction", unit="run") as progress:
+        results = extract_articles(articles, config=config)
+        progress.update(1)
 
     # Print summary.
     total_events = 0
@@ -210,7 +218,7 @@ def main() -> None:
     print()
     print(f"{'doc_id':<40} {'chunks':>6} {'failed':>6} {'events':>6}")
     print("-" * 62)
-    for result in results:
+    for result in tqdm(results, desc="Rendering summary", unit="article", leave=False):
         total_events += result.event_count
         total_failed += result.failed_chunks
         print(
