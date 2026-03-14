@@ -1,0 +1,43 @@
+{
+  "topic": [
+    "immigration",
+    "trade",
+    "foreign_policy",
+    "abortion",
+    "healthcare",
+    "economy",
+    "taxation",
+    "crime",
+    "climate",
+    "energy",
+    "elections",
+    "democracy",
+    "other"
+  ],
+  "stance_direction": [
+    "support",
+    "oppose",
+    "mixed",
+    "unclear"
+  ],
+  "stance_mode": [
+    "statement",
+    "action",
+    "promise",
+    "accusation",
+    "value_judgment"
+  ],
+  "evidence_role": [
+    "direct_quote",
+    "reported_speech",
+    "inferred_from_action",
+    "headline_claim",
+    "summary_statement"
+  ],
+  "event_date_precision": [
+    "day",
+    "month",
+    "year",
+    "approximate"
+  ]
+}

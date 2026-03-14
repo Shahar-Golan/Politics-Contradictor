@@ -1,0 +1,10 @@
+{
+  "doc_id": "article-missing-fields-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "economy",
+      "confidence": 0.8
+    }
+  ]
+}

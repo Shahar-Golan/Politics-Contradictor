@@ -1,0 +1,24 @@
+{
+  "doc_id": "article-reported-speech-001",
+  "stance_events": [
+    {
+      "politician": "Kamala Harris",
+      "topic": "abortion",
+      "subtopic": "reproductive rights",
+      "normalized_proposition": "Kamala Harris supports federal legislation protecting access to abortion.",
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "speaker": "Kamala Harris",
+      "target_entity": "abortion access",
+      "event_date": "2023-06-15",
+      "event_date_precision": "day",
+      "evidence_role": "reported_speech",
+      "quote_text": null,
+      "quote_start_char": null,
+      "quote_end_char": null,
+      "paraphrase": "Harris said that she would push for a federal law codifying abortion rights.",
+      "confidence": 0.75,
+      "notes": "No verbatim quote available; article uses reported speech construction."
+    }
+  ]
+}

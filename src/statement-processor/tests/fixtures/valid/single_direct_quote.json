@@ -1,0 +1,24 @@
+{
+  "doc_id": "article-direct-quote-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "economy",
+      "subtopic": "minimum wage",
+      "normalized_proposition": "Joe Biden supports raising the federal minimum wage to $15 per hour.",
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "speaker": "Joe Biden",
+      "target_entity": "federal minimum wage",
+      "event_date": "2021-02-25",
+      "event_date_precision": "day",
+      "evidence_role": "direct_quote",
+      "quote_text": "No one working 40 hours a week should live in poverty. We need to raise the minimum wage to $15.",
+      "quote_start_char": 342,
+      "quote_end_char": 436,
+      "paraphrase": "Biden called for a $15 federal minimum wage, arguing that full-time workers should not live in poverty.",
+      "confidence": 0.97,
+      "notes": null
+    }
+  ]
+}

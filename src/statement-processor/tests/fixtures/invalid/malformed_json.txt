@@ -1,0 +1,17 @@
+This file demonstrates malformed JSON that the validator must reject.
+It is intentionally not valid JSON.
+
+{
+  "doc_id": "article-malformed-001",
+  "stance_events": [
+    {
+      "politician": "Joe Biden",
+      "topic": "economy",
+      "normalized_proposition": "Biden supports economic recovery."
+      "stance_direction": "support",
+      "stance_mode": "statement",
+      "evidence_role": "direct_quote",
+      "confidence": 0.9
+    }
+  ]
+}
