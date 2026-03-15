@@ -27,7 +27,7 @@ Usage
         base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         gpt_model=os.environ.get("GPT_MODEL", "gpt-4o-mini"),
     )
-    # news == {"Donald Trump": [RecentNewsItem(point="...", article_refs=[...])]}
+    # news == {"donald-trump": [RecentNewsItem(point="...", article_refs=[...])]}
 """
 
 from __future__ import annotations
@@ -263,7 +263,7 @@ def build_recent_news(
             Defaults to ``24``.
 
     Returns:
-        A dict mapping ``politician_name`` → list of :class:`RecentNewsItem`.
+        A dict mapping ``politician_id`` → list of :class:`RecentNewsItem`.
         Politicians with no recent articles (after date filtering) are absent
         from the result.
 
@@ -287,7 +287,7 @@ def build_recent_news(
 
     result: dict[str, list[RecentNewsItem]] = {}
 
-    for _politician_id, (politician_name, articles) in articles_by_politician.items():
+    for politician_id, (politician_name, articles) in articles_by_politician.items():
         if not articles:
             continue
 
@@ -308,7 +308,7 @@ def build_recent_news(
         )
         items = _call_llm_for_recent_news(llm, politician_name, recent_articles)
         if items:
-            result[politician_name] = items
+            result[politician_id] = items
             logger.info(
                 "Generated %d news item(s) for %s.", len(items), politician_name
             )
@@ -318,7 +318,7 @@ def build_recent_news(
                 politician_name,
                 len(recent_articles),
             )
-            result[politician_name] = _build_fallback_items(recent_articles)
+            result[politician_id] = _build_fallback_items(recent_articles)
 
     return result
 

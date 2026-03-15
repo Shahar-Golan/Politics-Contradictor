@@ -280,7 +280,7 @@ class TestCallLlmForRecentNews:
 
 class TestBuildRecentNews:
     @patch("langchain_openai.ChatOpenAI")
-    def test_returns_dict_keyed_by_name(
+    def test_returns_dict_keyed_by_id(
         self,
         mock_chat_openai: MagicMock,
         sample_articles: list[ArticleForProfile],
@@ -300,8 +300,8 @@ class TestBuildRecentNews:
             lookback_hours=0,  # disable date filter so old fixture dates pass through
         )
 
-        assert "Donald Trump" in result
-        assert len(result["Donald Trump"]) == 2
+        assert "donald-trump" in result
+        assert len(result["donald-trump"]) == 2
 
     @patch("langchain_openai.ChatOpenAI")
     def test_politician_absent_when_no_articles(
@@ -318,7 +318,7 @@ class TestBuildRecentNews:
             gpt_model="gpt-4o-mini",
         )
 
-        assert "Joe Biden" not in result
+        assert "joe-biden" not in result
         mock_llm.invoke.assert_not_called()
 
     @patch("langchain_openai.ChatOpenAI")
@@ -342,10 +342,10 @@ class TestBuildRecentNews:
             lookback_hours=24,
         )
 
-        assert "Donald Trump" in result
-        assert len(result["Donald Trump"]) == len(recent_articles)
+        assert "donald-trump" in result
+        assert len(result["donald-trump"]) == len(recent_articles)
         # Fallback items use article titles as the point text.
-        points = [item.point for item in result["Donald Trump"]]
+        points = [item.point for item in result["donald-trump"]]
         assert any("Trump" in p for p in points)
 
     @patch("langchain_openai.ChatOpenAI")
@@ -369,7 +369,7 @@ class TestBuildRecentNews:
             lookback_hours=24,
         )
 
-        assert "Donald Trump" not in result
+        assert "donald-trump" not in result
         mock_llm.invoke.assert_not_called()
 
     @patch("langchain_openai.ChatOpenAI")
@@ -396,8 +396,8 @@ class TestBuildRecentNews:
             lookback_hours=0,  # disable date filter so old fixture dates pass through
         )
 
-        assert "Donald Trump" in result
-        assert "Joe Biden" in result
+        assert "donald-trump" in result
+        assert "joe-biden" in result
         # LLM should have been called once per politician.
         assert mock_llm.invoke.call_count == 2
 

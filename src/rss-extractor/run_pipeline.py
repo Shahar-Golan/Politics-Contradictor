@@ -68,7 +68,6 @@ from src.agents.profile_updater import (  # noqa: E402
 )
 from src.agents.recent_news_builder import (  # noqa: E402
     build_recent_news,
-    recent_news_to_dict,
 )
 from src.extractor.models import RelevanceLevel  # noqa: E402
 from src.pipelines.ingest_article import ingest_article  # noqa: E402
@@ -557,7 +556,11 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                 file=sys.stderr,
             )
         else:
-            # Stage 6a: Generate per-speaker recent-news summaries and write JSON.
+            # Stage 6a: Generate per-speaker recent-news summaries.
+            # The result is keyed by politician_id and will be stored inside
+            # the speaker_profiles.profile JSON column in Supabase (Stage 6b).
+            # A name-keyed copy is also written to a JSON file for inspection.
+            recent_news_serialized: dict[str, list[dict]] = {}
             print(
                 f"Building recent-news summaries for "
                 f"{len(articles_by_politician)} politician(s)…",
@@ -570,15 +573,24 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                     base_url=base_url,
                     gpt_model=gpt_model,
                 )
+                # Serialise keyed by politician_id for Supabase upsert.
+                recent_news_serialized = {
+                    pid: [item.to_dict() for item in items]
+                    for pid, items in recent_news.items()
+                }
+                # Write a name-keyed JSON file for human inspection.
+                name_keyed_news: dict[str, list[dict]] = {
+                    articles_by_politician[pid][0]: items_dicts
+                    for pid, items_dicts in recent_news_serialized.items()
+                }
                 json_path = Path(args.json_out)
                 json_path.write_text(
-                    json.dumps(recent_news_to_dict(recent_news), indent=2),
+                    json.dumps(name_keyed_news, indent=2),
                     encoding="utf-8",
                 )
-                recent_news_politicians = list(recent_news.keys())
                 print(
                     f"Stage 6a complete: wrote recent-news for "
-                    f"{len(recent_news_politicians)} speaker(s) → {json_path}",
+                    f"{len(recent_news_serialized)} speaker(s) → {json_path}",
                     flush=True,
                 )
             except Exception as exc:
@@ -589,6 +601,8 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                 )
 
             # Stage 6b: Update Supabase speaker_profiles table.
+            # recent_news_serialized (keyed by politician_id) is merged into
+            # each politician's profile JSON before upsert.
             supabase_url = os.environ.get("SUPABASE_URL", "")
             supabase_key = os.environ.get("SUPABASE_KEY", "")
             if not supabase_url or not supabase_key:
@@ -616,6 +630,7 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                         base_url=base_url,
                         gpt_model=gpt_model,
                         dry_run=args.dry_run,
+                        recent_news_by_politician=recent_news_serialized or None,
                     )
                     profiles_updated = update_result.profiles_updated
                     profiles_skipped = update_result.profiles_skipped

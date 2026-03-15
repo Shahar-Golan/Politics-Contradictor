@@ -423,6 +423,7 @@ def update_speaker_profiles(
     gpt_model: str,
     profiles_table: str = "speaker_profiles",
     dry_run: bool = False,
+    recent_news_by_politician: dict[str, list[dict[str, Any]]] | None = None,
 ) -> ProfileUpdateResult:
     """Update speaker profiles in Supabase based on newly ingested articles.
 
@@ -435,9 +436,12 @@ def update_speaker_profiles(
        substantive new information.
     4. Calls an LLM to determine whether the new articles contain substantive
        profile-worthy information (new roles, controversies, positions, etc.).
-    5. Upserts the profile back to Supabase:
+    5. Merges any ``recent_news`` items for this politician into the final
+       profile under the ``recent_news`` key (replacing any previous value).
+    6. Upserts the profile back to Supabase:
        - Full LLM-merged profile if substantive new info was found.
        - Dataset-insights-only update otherwise.
+       Both paths always include the refreshed ``recent_news`` section.
 
     Args:
         articles_by_politician: Mapping of ``politician_id`` (from
@@ -452,6 +456,12 @@ def update_speaker_profiles(
             Defaults to ``"speaker_profiles"``.
         dry_run: When ``True``, all stages run (including LLM calls) but the
             final Supabase upsert is skipped.
+        recent_news_by_politician: Optional mapping of ``politician_id`` to a
+            list of serialised :class:`~recent_news_builder.RecentNewsItem`
+            dicts (each with ``"point"`` and ``"article_refs"`` keys).  When
+            provided and an entry exists for the current politician, the list
+            is stored under the ``recent_news`` key in the profile before
+            upsert, replacing any previously stored value.
 
     Returns:
         A :class:`ProfileUpdateResult` summarising counts of politicians
@@ -524,6 +534,18 @@ def update_speaker_profiles(
                 "updating dataset_insights only.",
                 politician_name,
             )
+
+        # Merge recent_news into the profile so it is stored inside the
+        # speaker_profiles.profile JSON column in Supabase.
+        if recent_news_by_politician is not None:
+            news_items = recent_news_by_politician.get(politician_id)
+            if news_items is not None:
+                final_profile["recent_news"] = news_items
+                logger.info(
+                    "Merged %d recent-news item(s) into profile for %s.",
+                    len(news_items),
+                    politician_name,
+                )
 
         if dry_run:
             logger.info(

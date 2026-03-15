@@ -592,6 +592,85 @@ class TestUpdateSpeakerProfiles:
         assert result.errors == 1
         assert result.profiles_updated == 0
 
+    @patch("langchain_openai.ChatOpenAI")
+    @patch("supabase.create_client")
+    def test_recent_news_stored_inside_profile(
+        self,
+        mock_create_client: MagicMock,
+        mock_chat_openai: MagicMock,
+        sample_articles: list[ArticleForProfile],
+        existing_profile: dict,
+    ) -> None:
+        """recent_news items must be merged into the upserted profile JSON."""
+        mock_client = MagicMock()
+        mock_client.table().select().eq().execute.return_value = MagicMock(
+            data=[{"profile": existing_profile}]
+        )
+        mock_create_client.return_value = mock_client
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(
+            content=json.dumps({"updated": False})
+        )
+        mock_chat_openai.return_value = mock_llm
+
+        news_items = [
+            {"point": "Trump signed a new order.", "article_refs": []},
+        ]
+        update_speaker_profiles(
+            articles_by_politician=self._make_articles_map(sample_articles),
+            supabase_url="https://x.supabase.co",
+            supabase_key="key",
+            openai_api_key="sk-test",
+            base_url="https://api.openai.com/v1",
+            gpt_model="gpt-4o-mini",
+            recent_news_by_politician={"donald-trump": news_items},
+        )
+
+        upsert_call = mock_client.table().upsert.call_args
+        row = upsert_call[0][0]
+        upserted_profile = json.loads(row["profile"])
+        assert "recent_news" in upserted_profile
+        assert upserted_profile["recent_news"] == news_items
+
+    @patch("langchain_openai.ChatOpenAI")
+    @patch("supabase.create_client")
+    def test_no_recent_news_key_when_not_provided(
+        self,
+        mock_create_client: MagicMock,
+        mock_chat_openai: MagicMock,
+        sample_articles: list[ArticleForProfile],
+        existing_profile: dict,
+    ) -> None:
+        """When recent_news_by_politician is None, no recent_news key is added."""
+        mock_client = MagicMock()
+        mock_client.table().select().eq().execute.return_value = MagicMock(
+            data=[{"profile": existing_profile}]
+        )
+        mock_create_client.return_value = mock_client
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(
+            content=json.dumps({"updated": False})
+        )
+        mock_chat_openai.return_value = mock_llm
+
+        update_speaker_profiles(
+            articles_by_politician=self._make_articles_map(sample_articles),
+            supabase_url="https://x.supabase.co",
+            supabase_key="key",
+            openai_api_key="sk-test",
+            base_url="https://api.openai.com/v1",
+            gpt_model="gpt-4o-mini",
+            recent_news_by_politician=None,
+        )
+
+        upsert_call = mock_client.table().upsert.call_args
+        row = upsert_call[0][0]
+        upserted_profile = json.loads(row["profile"])
+        # existing_profile has no recent_news key; we should not have injected one.
+        assert "recent_news" not in upserted_profile
+
 
 # ---------------------------------------------------------------------------
 # ArticleForProfile dataclass
