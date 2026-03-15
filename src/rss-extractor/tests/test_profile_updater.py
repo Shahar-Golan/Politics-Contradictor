@@ -269,12 +269,21 @@ class TestUpsertProfile:
     def test_calls_upsert_with_correct_args(self) -> None:
         client = MagicMock()
         profile = {"name": "Donald Trump"}
-        _upsert_profile(client, "donald_trump", profile, "speaker_profiles")
+        _upsert_profile(client, "donald_trump", "Donald Trump", profile, "speaker_profiles")
         client.table.assert_called_with("speaker_profiles")
         call_args = client.table().upsert.call_args
         row = call_args[0][0]
         assert row["speaker_id"] == "donald_trump"
+        assert row["name"] == "Donald Trump"
         assert json.loads(row["profile"]) == profile
+
+    def test_name_column_always_sent(self) -> None:
+        """name must always be in the upsert payload (NOT NULL constraint)."""
+        client = MagicMock()
+        _upsert_profile(client, "joe_biden", "Joe Biden", {}, "speaker_profiles")
+        row = client.table().upsert.call_args[0][0]
+        assert "name" in row
+        assert row["name"] == "Joe Biden"
 
 
 # ---------------------------------------------------------------------------

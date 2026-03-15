@@ -300,6 +300,7 @@ def _fetch_profile(
 def _upsert_profile(
     client: Any,
     speaker_id: str,
+    name: str,
     profile: dict[str, Any],
     profiles_table: str,
 ) -> None:
@@ -308,14 +309,22 @@ def _upsert_profile(
     Uses ``on_conflict="speaker_id"`` so the row is inserted on first run and
     updated on subsequent runs.
 
+    The ``name`` column is sent explicitly on every upsert because the
+    ``speaker_profiles`` table defines it as NOT NULL.
+
     Args:
         client: Initialised Supabase Python client.
         speaker_id: Speaker ID used as the upsert key.
+        name: Canonical display name of the politician (e.g. ``"Donald Trump"``).
         profile: Full profile dict to serialise and store.
         profiles_table: Name of the Supabase table storing speaker profiles.
     """
     client.table(profiles_table).upsert(
-        {"speaker_id": speaker_id, "profile": json.dumps(profile)},
+        {
+            "speaker_id": speaker_id,
+            "name": name,
+            "profile": json.dumps(profile),
+        },
         on_conflict="speaker_id",
     ).execute()
 
@@ -555,7 +564,7 @@ def update_speaker_profiles(
             )
         else:
             try:
-                _upsert_profile(client, speaker_id, final_profile, profiles_table)
+                _upsert_profile(client, speaker_id, politician_name, final_profile, profiles_table)
                 logger.info("Upserted profile for %s.", politician_name)
             except Exception:
                 logger.exception(
