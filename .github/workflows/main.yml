@@ -53,7 +53,8 @@ jobs:
 
       - name: Run hourly pipeline
         run: |
-          python src/rss-extractor/run_pipeline.py
+          cd src/rss-extractor
+          python run_pipeline.py
 
       - name: Upload logs on failure
         if: failure()
