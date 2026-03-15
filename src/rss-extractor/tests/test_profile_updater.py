@@ -275,7 +275,7 @@ class TestUpsertProfile:
         row = call_args[0][0]
         assert row["speaker_id"] == "donald_trump"
         assert row["name"] == "Donald Trump"
-        assert json.loads(row["profile"]) == profile
+        assert row["profile"] == profile
 
     def test_name_column_always_sent(self) -> None:
         """name must always be in the upsert payload (NOT NULL constraint)."""
@@ -572,7 +572,7 @@ class TestUpdateSpeakerProfiles:
 
         upsert_call = mock_client.table().upsert.call_args
         row = upsert_call[0][0]
-        upserted_profile = json.loads(row["profile"])
+        upserted_profile = row["profile"]
         # existing profile had total_articles=5, we added 2 sample articles
         assert upserted_profile["dataset_insights"]["total_articles"] == 7
 
@@ -698,7 +698,7 @@ class TestUpdateSpeakerProfiles:
 
         upsert_call = mock_client.table().upsert.call_args
         row = upsert_call[0][0]
-        upserted_profile = json.loads(row["profile"])
+        upserted_profile = row["profile"]
         assert "recent_news" in upserted_profile
         assert upserted_profile["recent_news"] == news_items
 
@@ -736,7 +736,7 @@ class TestUpdateSpeakerProfiles:
 
         upsert_call = mock_client.table().upsert.call_args
         row = upsert_call[0][0]
-        upserted_profile = json.loads(row["profile"])
+        upserted_profile = row["profile"]
         # existing_profile has no recent_news key; we should not have injected one.
         assert "recent_news" not in upserted_profile
 

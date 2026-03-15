@@ -318,14 +318,16 @@ def _upsert_profile(
         client: Initialised Supabase Python client.
         speaker_id: Speaker ID used as the upsert key.
         name: Canonical display name of the politician (e.g. ``"Donald Trump"``).
-        profile: Full profile dict to serialise and store.
+        profile: Full profile dict to store in the ``profile`` JSONB column.
+            Passed as a Python dict so the Supabase client serialises it as a
+            JSON object (not a string literal) in the HTTP payload.
         profiles_table: Name of the Supabase table storing speaker profiles.
     """
     bio: dict[str, Any] = profile.get("bio") or {}
     row: dict[str, Any] = {
         "speaker_id": speaker_id,
         "name": name,
-        "profile": json.dumps(profile),
+        "profile": profile,
     }
     party = bio.get("party")
     if party:
