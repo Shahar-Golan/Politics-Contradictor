@@ -3,7 +3,8 @@
 run_pipeline.py
 ===============
 Full RSS extraction pipeline: poll feeds → fetch articles → extract text →
-export CSV → push to Supabase.
+export CSV → push to Supabase → update speaker profiles → export recent-news
+JSON.
 
 Designed to run unattended in GitHub Actions, but works locally too.
 
@@ -13,19 +14,22 @@ Usage — local
 
     cd src/rss-extractor
     python run_pipeline.py
-    python run_pipeline.py --dry-run          # skip Supabase push
-    python run_pipeline.py --skip-poll        # skip feed polling
+    python run_pipeline.py --dry-run             # skip Supabase & profile pushes
+    python run_pipeline.py --skip-poll           # skip feed polling
+    python run_pipeline.py --skip-profile-update # skip speaker-profile updates
 
 Usage — GitHub Actions
 ----------------------
-Set ``SUPABASE_URL`` and ``SUPABASE_KEY`` as repository secrets, then::
+Set ``SUPABASE_URL``, ``SUPABASE_KEY``, and ``OPENAI_API_KEY`` as repository
+secrets, then::
 
     - name: Run RSS extraction pipeline
       working-directory: src/rss-extractor
       run: python run_pipeline.py
       env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        SUPABASE_URL:    ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY:    ${{ secrets.SUPABASE_KEY }}
+        OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
 
 Exit codes
 ----------
@@ -37,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import sqlite3
 import sys
@@ -57,6 +62,15 @@ if str(_SCRIPT_DIR) not in sys.path:
 # Pipeline-stage imports (after sys.path fixup)
 # ---------------------------------------------------------------------------
 from src.adapters.supabase_export import records_to_csv, to_supabase_record  # noqa: E402
+from src.agents.profile_updater import (  # noqa: E402
+    ArticleForProfile,
+    update_speaker_profiles,
+)
+from src.agents.recent_news_builder import (  # noqa: E402
+    build_recent_news,
+    recent_news_to_dict,
+)
+from src.extractor.models import RelevanceLevel  # noqa: E402
 from src.pipelines.ingest_article import ingest_article  # noqa: E402
 from src.pipelines.ingest_feed import ingest_feed  # noqa: E402
 from src.scout.fetcher import fetch_article  # noqa: E402
@@ -278,6 +292,19 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip the article-extraction stage.",
     )
+    parser.add_argument(
+        "--skip-profile-update",
+        action="store_true",
+        help="Skip the speaker-profile update stage (Stage 6).",
+    )
+    parser.add_argument(
+        "--json-out",
+        default="recent_news.json",
+        help=(
+            "Path to write the per-speaker recent-news JSON (default: "
+            "recent_news.json). Written during Stage 6."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -373,6 +400,8 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
     supabase_records = []
     extracted_success = 0
     skipped_no_html = 0
+    # Mapping of politician_id → (politician_name, articles) for Stages 6 & 7.
+    articles_by_politician: dict[str, tuple[str, list[ArticleForProfile]]] = {}
     if args.skip_extract:
         print("Stage 3 skipped (--skip-extract).", flush=True)
     else:
@@ -399,6 +428,30 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                 )
                 supabase_records.append(record)
                 extracted_success += 1
+
+                # Collect articles for each politician where relevance is not
+                # IRRELEVANT, so that Stages 6 & 7 have meaningful content.
+                article_for_profile = ArticleForProfile(
+                    doc_id=result.extracted_article.article_id,
+                    title=result.extracted_article.metadata.title,
+                    body=result.extracted_article.body,
+                    date=(
+                        result.extracted_article.metadata.published_at.isoformat()
+                        if result.extracted_article.metadata.published_at
+                        else None
+                    ),
+                    link=(
+                        result.extracted_article.metadata.canonical_url
+                        or result.extracted_article.url
+                    ),
+                )
+                for mention in result.mentions or []:
+                    if mention.relevance == RelevanceLevel.IRRELEVANT:
+                        continue
+                    pid = mention.politician_id
+                    if pid not in articles_by_politician:
+                        articles_by_politician[pid] = (mention.politician_name, [])
+                    articles_by_politician[pid][1].append(article_for_profile)
 
         if skipped_no_html:
             gha_warning(f"{skipped_no_html} article(s) skipped (no HTML body).")
@@ -474,6 +527,117 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
     gha_endgroup()
 
     # -----------------------------------------------------------------------
+    # Stage 6: Update speaker profiles & export recent-news JSON
+    # -----------------------------------------------------------------------
+    gha_group("Stage 6 — Update speaker profiles & export recent-news JSON")
+    profiles_updated = profiles_skipped = profile_errors = 0
+    recent_news_politicians: list[str] = []
+
+    if args.skip_profile_update:
+        print("Stage 6 skipped (--skip-profile-update).", flush=True)
+    elif not articles_by_politician:
+        print(
+            "Stage 6: no politician articles collected — nothing to process.",
+            flush=True,
+        )
+    else:
+        openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+        base_url = os.environ.get(
+            "OPENAI_BASE_URL", "https://api.openai.com/v1"
+        )
+        gpt_model = os.environ.get("GPT_MODEL", "gpt-4o-mini")
+
+        if not openai_api_key:
+            gha_warning(
+                "OPENAI_API_KEY is not set — Stage 6 (profile update & "
+                "recent-news generation) will be skipped."
+            )
+            print(
+                "WARNING: OPENAI_API_KEY not set; skipping Stage 6.",
+                file=sys.stderr,
+            )
+        else:
+            # Stage 6a: Generate per-speaker recent-news summaries and write JSON.
+            print(
+                f"Building recent-news summaries for "
+                f"{len(articles_by_politician)} politician(s)…",
+                flush=True,
+            )
+            try:
+                recent_news = build_recent_news(
+                    articles_by_politician=articles_by_politician,
+                    openai_api_key=openai_api_key,
+                    base_url=base_url,
+                    gpt_model=gpt_model,
+                )
+                json_path = Path(args.json_out)
+                json_path.write_text(
+                    json.dumps(recent_news_to_dict(recent_news), indent=2),
+                    encoding="utf-8",
+                )
+                recent_news_politicians = list(recent_news.keys())
+                print(
+                    f"Stage 6a complete: wrote recent-news for "
+                    f"{len(recent_news_politicians)} speaker(s) → {json_path}",
+                    flush=True,
+                )
+            except Exception as exc:
+                gha_warning(f"Recent-news generation failed: {exc}")
+                print(
+                    f"WARNING: recent-news generation failed: {exc}",
+                    file=sys.stderr,
+                )
+
+            # Stage 6b: Update Supabase speaker_profiles table.
+            supabase_url = os.environ.get("SUPABASE_URL", "")
+            supabase_key = os.environ.get("SUPABASE_KEY", "")
+            if not supabase_url or not supabase_key:
+                gha_warning(
+                    "SUPABASE_URL / SUPABASE_KEY not set — "
+                    "skipping speaker-profile upserts."
+                )
+                print(
+                    "WARNING: SUPABASE_URL/SUPABASE_KEY not set; "
+                    "skipping profile upserts.",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"Updating speaker profiles for "
+                    f"{len(articles_by_politician)} politician(s)…",
+                    flush=True,
+                )
+                try:
+                    update_result = update_speaker_profiles(
+                        articles_by_politician=articles_by_politician,
+                        supabase_url=supabase_url,
+                        supabase_key=supabase_key,
+                        openai_api_key=openai_api_key,
+                        base_url=base_url,
+                        gpt_model=gpt_model,
+                        dry_run=args.dry_run,
+                    )
+                    profiles_updated = update_result.profiles_updated
+                    profiles_skipped = update_result.profiles_skipped
+                    profile_errors = update_result.errors
+                    if profile_errors:
+                        gha_warning(
+                            f"{profile_errors} speaker-profile upsert(s) failed."
+                        )
+                    print(
+                        f"Stage 6b complete: profiles updated={profiles_updated}, "
+                        f"skipped={profiles_skipped}, errors={profile_errors}.",
+                        flush=True,
+                    )
+                except Exception as exc:
+                    gha_warning(f"Speaker-profile update failed: {exc}")
+                    print(
+                        f"WARNING: speaker-profile update failed: {exc}",
+                        file=sys.stderr,
+                    )
+    gha_endgroup()
+
+    # -----------------------------------------------------------------------
     # Write GitHub Actions step summary
     # -----------------------------------------------------------------------
     summary_lines = [
@@ -495,12 +659,26 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
             f"| 5 · Push to Supabase | {uploaded} uploaded, "
             f"{skipped_dup} duplicates, {push_errors} errors |"
         )
+    if args.skip_profile_update:
+        summary_lines.append("| 6 · Speaker profiles & recent news | ⏭ skipped |")
+    elif not articles_by_politician:
+        summary_lines.append(
+            "| 6 · Speaker profiles & recent news | ⏭ no articles |"
+        )
+    else:
+        speakers_str = ", ".join(recent_news_politicians) or "none"
+        summary_lines.append(
+            f"| 6 · Speaker profiles & recent news | "
+            f"profiles updated={profiles_updated}, skipped={profiles_skipped}, "
+            f"errors={profile_errors}; recent-news for: {speakers_str} |"
+        )
     _write_step_summary("\n".join(summary_lines))
 
     # Expose key counts as step outputs for downstream jobs
     gha_set_output("new_feed_items", str(new_items_total))
     gha_set_output("extracted_articles", str(extracted_success))
     gha_set_output("uploaded_records", str(uploaded))
+    gha_set_output("profiles_updated", str(profiles_updated))
 
     # -----------------------------------------------------------------------
     # Exit

@@ -194,6 +194,7 @@ dependencies:
       - htmldate==1.9.4
       - jieba3k==0.35.1
       - justext==3.0.2
+      - langchain-openai
       - lxml-html-clean==0.4.4
       - newspaper3k==0.2.8
       - nltk==3.9.3

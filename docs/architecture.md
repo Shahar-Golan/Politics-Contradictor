@@ -91,7 +91,7 @@ Configured in: `src/rss-extractor/config/politicians.yaml`
 
 See `docs/data_model.md` for full schema details.
 
-**Supabase (PostgreSQL):** `tweets`, `news_articles`, `topics`, `tweet_topics`, `article_topics`, `contradictions`, `figure_pages`, `agent_runs`
+**Supabase (PostgreSQL):** `tweets`, `news_articles`, `topics`, `tweet_topics`, `article_topics`, `contradictions`, `figure_pages`, `agent_runs`, `speaker_profiles`
 
 **Pinecone indexes:**
 - `politics` — tweet embeddings (~52K vectors, 1024-dim, cosine)
@@ -126,6 +126,32 @@ Embedding model: `RPRTHPB-text-embedding-3-small` via `https://api.llmod.ai/v1`
 | 4 | Figure Pages + full System A | NOT STARTED |
 | 5 | Deployment and automation | NOT STARTED |
 
+## RSS Ingestion Pipeline (`src/rss-extractor/`)
+
+The RSS extractor is a standalone six-stage pipeline (`run_pipeline.py`):
+
+```
+Stage 1  Poll feeds          → discover new items from configured RSS feeds
+Stage 2  Fetch articles      → download raw HTML for each new item
+Stage 3  Extract articles    → parse body, clean text, detect politician mentions
+Stage 4  Export CSV          → write extracted records to output.csv
+Stage 5  Push to Supabase    → upsert new rows into news_articles table
+Stage 6  Speaker profiles    → LLM analyses new articles per politician:
+         & recent news         a) updates speaker_profiles in Supabase
+                               b) writes recent_news.json with per-speaker
+                                  key-point summaries backed by article citations
+```
+
+**Agent modules** (under `src/rss-extractor/src/agents/`):
+
+| Module | Responsibility |
+|---|---|
+| `profile_updater.py` | Fetches existing Supabase profile, calls LLM to detect new bio/role/controversy information, upserts merged profile |
+| `recent_news_builder.py` | Calls LLM to generate 3–7 cited key-point summaries of the most important recent news per politician |
+
+Stage 6 requires `OPENAI_API_KEY`.  If the key is absent the stage is skipped
+with a warning and all preceding stages complete normally.
+
 ---
 
 ## Known gaps and TODOs
@@ -133,5 +159,5 @@ Embedding model: `RPRTHPB-text-embedding-3-small` via `https://api.llmod.ai/v1`
 - `src/graphs/background_graph.py` does not yet exist — System A is fully planned but not implemented.
 - `src/agents/page_lookup.py` is a stub that always returns `{"found": False}`. It will be upgraded in Phase 4.
 - `src/agents/ingestion_agent.py`, `topic_extractor.py`, `contradiction_finder.py`, `page_builder.py` are all planned but not yet implemented.
-- The `src/rss-extractor/` module is functional but not yet integrated into the main LangGraph pipeline.
+- The `src/rss-extractor/` pipeline is functional but not yet integrated into the main LangGraph pipeline.
 - `src/agent/` contains a legacy ReAct agent kept for backward compatibility — it is not part of the current System B graph.

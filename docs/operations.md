@@ -96,16 +96,35 @@ python src/load_news_to_supabase_and_pinecone.py
 
 ### Scraping RSS feeds
 
-The RSS extractor scrapes configured feeds and exports results to CSV and/or Supabase:
+The RSS extractor scrapes configured feeds, exports results to CSV and Supabase,
+updates speaker profiles, and generates a per-speaker recent-news JSON summary:
 
 ```bash
 conda activate politics-contradictor
-python src/rss-extractor/scrape.py
-python src/rss-extractor/export_csv.py
-python src/rss-extractor/push_to_supabase.py
+cd src/rss-extractor
+python run_pipeline.py                    # full pipeline (all 6 stages)
+python run_pipeline.py --dry-run          # skip Supabase & profile writes
+python run_pipeline.py --skip-profile-update   # skip Stage 6
+python run_pipeline.py --json-out path/to/recent_news.json  # custom JSON output
 ```
 
-Feed configuration is in `src/rss-extractor/config/feeds.yaml`. Politicians are listed in `src/rss-extractor/config/politicians.yaml`.
+**Pipeline stages:**
+
+| Stage | Name | Description |
+|-------|------|-------------|
+| 1 | Poll feeds | Fetch new items from configured RSS feeds |
+| 2 | Fetch articles | Download HTML for each new feed item |
+| 3 | Extract articles | Parse, clean and match politician mentions |
+| 4 | Export CSV | Write all extracted records to `output.csv` |
+| 5 | Push to Supabase | Upsert new records to `news_articles` table |
+| 6 | Speaker profiles & recent news | Use LLM to update `speaker_profiles` in Supabase and write per-speaker recent-news summaries to `recent_news.json` |
+
+Stage 6 requires `OPENAI_API_KEY` (in addition to `SUPABASE_URL` / `SUPABASE_KEY`).
+If `OPENAI_API_KEY` is absent, Stage 6 is skipped with a warning and the
+pipeline continues normally.
+
+Feed configuration is in `src/rss-extractor/config/feeds.yaml`.  Politicians
+are listed in `src/rss-extractor/config/politicians.yaml`.
 
 ---
 
