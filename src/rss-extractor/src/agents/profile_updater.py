@@ -309,8 +309,10 @@ def _upsert_profile(
     Uses ``on_conflict="speaker_id"`` so the row is inserted on first run and
     updated on subsequent runs.
 
-    The ``name`` column is sent explicitly on every upsert because the
-    ``speaker_profiles`` table defines it as NOT NULL.
+    The ``name``, ``party``, and ``current_role`` columns are sent on every
+    upsert so that the dedicated table columns stay in sync with the profile
+    JSON.  ``name`` is NOT NULL; ``party`` and ``current_role`` are nullable
+    and are omitted from the payload when absent from the profile.
 
     Args:
         client: Initialised Supabase Python client.
@@ -319,14 +321,19 @@ def _upsert_profile(
         profile: Full profile dict to serialise and store.
         profiles_table: Name of the Supabase table storing speaker profiles.
     """
-    client.table(profiles_table).upsert(
-        {
-            "speaker_id": speaker_id,
-            "name": name,
-            "profile": json.dumps(profile),
-        },
-        on_conflict="speaker_id",
-    ).execute()
+    bio: dict[str, Any] = profile.get("bio") or {}
+    row: dict[str, Any] = {
+        "speaker_id": speaker_id,
+        "name": name,
+        "profile": json.dumps(profile),
+    }
+    party = bio.get("party")
+    if party:
+        row["party"] = party
+    current_role = bio.get("current_role")
+    if current_role:
+        row["current_role"] = current_role
+    client.table(profiles_table).upsert(row, on_conflict="speaker_id").execute()
 
 
 def build_articles_text(
@@ -411,6 +418,14 @@ def _call_llm_for_profile_update(
         result: dict[str, Any] = json.loads(content)
         if result.get("updated") and isinstance(result.get("profile"), dict):
             return result["profile"]
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            "LLM returned malformed JSON for profile update of %s (char %d); "
+            "falling back to dataset_insights-only update. Error: %s",
+            politician_name,
+            exc.pos,
+            exc.msg,
+        )
     except Exception:
         logger.exception(
             "LLM call failed during profile update for %s.", politician_name

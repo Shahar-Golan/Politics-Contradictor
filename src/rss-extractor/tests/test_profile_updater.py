@@ -285,6 +285,36 @@ class TestUpsertProfile:
         assert "name" in row
         assert row["name"] == "Joe Biden"
 
+    def test_party_and_current_role_populated_from_bio(self) -> None:
+        """party and current_role are extracted from profile.bio and sent as columns."""
+        client = MagicMock()
+        profile = {
+            "bio": {
+                "party": "Republican Party",
+                "current_role": "Former President",
+            }
+        }
+        _upsert_profile(client, "donald_trump", "Donald Trump", profile, "speaker_profiles")
+        row = client.table().upsert.call_args[0][0]
+        assert row["party"] == "Republican Party"
+        assert row["current_role"] == "Former President"
+
+    def test_party_and_current_role_absent_when_not_in_bio(self) -> None:
+        """party and current_role are omitted when absent from profile.bio."""
+        client = MagicMock()
+        _upsert_profile(client, "joe_biden", "Joe Biden", {}, "speaker_profiles")
+        row = client.table().upsert.call_args[0][0]
+        assert "party" not in row
+        assert "current_role" not in row
+
+    def test_party_and_current_role_absent_when_bio_is_missing(self) -> None:
+        """party and current_role are omitted when the profile has no bio key."""
+        client = MagicMock()
+        _upsert_profile(client, "joe_biden", "Joe Biden", {"name": "Joe Biden"}, "speaker_profiles")
+        row = client.table().upsert.call_args[0][0]
+        assert "party" not in row
+        assert "current_role" not in row
+
 
 # ---------------------------------------------------------------------------
 # _call_llm_for_profile_update
@@ -356,6 +386,36 @@ class TestCallLlmForProfileUpdate:
             llm, "Donald Trump", None, sample_articles
         )
         assert result == new_profile
+
+    def test_returns_none_on_malformed_json(
+        self,
+        sample_articles: list[ArticleForProfile],
+    ) -> None:
+        """JSONDecodeError from the LLM should return None (not raise)."""
+        llm = MagicMock()
+        llm.invoke.return_value = MagicMock(content="this is not json{{{")
+        result = _call_llm_for_profile_update(
+            llm, "Donald Trump", None, sample_articles
+        )
+        assert result is None
+
+    def test_malformed_json_logged_as_warning_not_error(
+        self,
+        sample_articles: list[ArticleForProfile],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """JSONDecodeError should be logged at WARNING level, not ERROR/exception."""
+        import logging
+
+        llm = MagicMock()
+        llm.invoke.return_value = MagicMock(content="not valid json{{")
+        with caplog.at_level(logging.WARNING):
+            _call_llm_for_profile_update(llm, "Donald Trump", None, sample_articles)
+        warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert len(warning_records) == 1
+        assert len(error_records) == 0
+        assert "Donald Trump" in warning_records[0].message
 
 
 # ---------------------------------------------------------------------------
