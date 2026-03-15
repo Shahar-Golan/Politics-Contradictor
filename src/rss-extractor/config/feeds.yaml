@@ -16,7 +16,7 @@ feeds:
   - id: NYTimes-Politics
     name: New York Times Politics
     url: https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
-    enabled: true
+    enabled: false
     tags:
       - politics
       - national
@@ -34,7 +34,7 @@ feeds:
   - id: the-hill
     name: The Hill
     url: https://thehill.com/homenews/feed/
-    enabled: true
+    enabled: false
     tags:
       - politics
       - national
@@ -185,15 +185,6 @@ feeds:
   - id: guardian-us-politics
     name: The Guardian US Politics
     url: https://www.theguardian.com/us-news/us-politics/rss
-    enabled: true
-    tags:
-      - politics
-      - international
-    poll_interval_minutes: 30
-
-  - id: aljazeera
-    name: Al Jazeera
-    url: https://www.aljazeera.com/xml/rss/all.xml
     enabled: true
     tags:
       - politics
