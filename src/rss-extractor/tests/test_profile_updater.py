@@ -10,6 +10,7 @@ needed.
 from __future__ import annotations
 
 import json
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +21,7 @@ from agents.profile_updater import (
     _call_llm_for_profile_update,
     _fetch_profile,
     _normalize_speaker_id,
+    _update_dataset_insights,
     _upsert_profile,
     build_articles_text,
     update_speaker_profiles,
@@ -98,6 +100,64 @@ def existing_profile() -> dict:
             "geographic_focus": "",
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# _update_dataset_insights
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateDatasetInsights:
+    def test_increments_total_articles(
+        self, sample_articles: list[ArticleForProfile]
+    ) -> None:
+        profile = {"dataset_insights": {"total_articles": 10, "date_range": ""}}
+        updated = _update_dataset_insights(profile, sample_articles)
+        assert updated["dataset_insights"]["total_articles"] == 12
+
+    def test_total_articles_starts_at_zero_when_missing(
+        self, sample_articles: list[ArticleForProfile]
+    ) -> None:
+        updated = _update_dataset_insights({}, sample_articles)
+        assert updated["dataset_insights"]["total_articles"] == 2
+
+    def test_date_range_set_from_articles(
+        self, sample_articles: list[ArticleForProfile]
+    ) -> None:
+        updated = _update_dataset_insights({}, sample_articles)
+        date_range = updated["dataset_insights"]["date_range"]
+        assert "2025-10-15" in date_range
+        assert "2025-10-16" in date_range
+
+    def test_date_range_extended_when_existing(
+        self, sample_articles: list[ArticleForProfile]
+    ) -> None:
+        profile = {
+            "dataset_insights": {
+                "total_articles": 5,
+                "date_range": "2025-09-01 – 2025-10-10",
+            }
+        }
+        updated = _update_dataset_insights(profile, sample_articles)
+        date_range = updated["dataset_insights"]["date_range"]
+        assert "2025-09-01" in date_range  # existing min preserved
+        assert "2025-10-16" in date_range  # new max from articles
+
+    def test_undated_articles_counted_not_in_range(self) -> None:
+        article = ArticleForProfile(
+            doc_id="x1", title="T", body="B", date=None, link="http://x.com"
+        )
+        profile: dict[str, Any] = {}
+        updated = _update_dataset_insights(profile, [article])
+        assert updated["dataset_insights"]["total_articles"] == 1
+        assert updated["dataset_insights"]["date_range"] == ""
+
+    def test_does_not_mutate_original(
+        self, sample_articles: list[ArticleForProfile]
+    ) -> None:
+        profile: dict = {"dataset_insights": {"total_articles": 3, "date_range": ""}}
+        _update_dataset_insights(profile, sample_articles)
+        assert profile["dataset_insights"]["total_articles"] == 3
 
 
 # ---------------------------------------------------------------------------
@@ -373,6 +433,79 @@ class TestUpdateSpeakerProfiles:
 
         assert result.profiles_updated == 0
         assert result.profiles_skipped == 1
+        # dataset_insights must still be upserted even when LLM found nothing new.
+        assert result.datasets_only_updated == 1
+
+    @patch("langchain_openai.ChatOpenAI")
+    @patch("supabase.create_client")
+    def test_upsert_called_even_when_no_new_info(
+        self,
+        mock_create_client: MagicMock,
+        mock_chat_openai: MagicMock,
+        sample_articles: list[ArticleForProfile],
+        existing_profile: dict,
+    ) -> None:
+        """Upsert must always be called to keep article counts current."""
+        mock_client = MagicMock()
+        mock_client.table().select().eq().execute.return_value = MagicMock(
+            data=[{"profile": existing_profile}]
+        )
+        mock_create_client.return_value = mock_client
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(
+            content=json.dumps({"updated": False})
+        )
+        mock_chat_openai.return_value = mock_llm
+
+        update_speaker_profiles(
+            articles_by_politician=self._make_articles_map(sample_articles),
+            supabase_url="https://x.supabase.co",
+            supabase_key="key",
+            openai_api_key="sk-test",
+            base_url="https://api.openai.com/v1",
+            gpt_model="gpt-4o-mini",
+        )
+
+        # Upsert must have been called once (for dataset_insights refresh).
+        assert mock_client.table().upsert.call_count >= 1
+
+    @patch("langchain_openai.ChatOpenAI")
+    @patch("supabase.create_client")
+    def test_article_count_incremented_in_upserted_profile(
+        self,
+        mock_create_client: MagicMock,
+        mock_chat_openai: MagicMock,
+        sample_articles: list[ArticleForProfile],
+        existing_profile: dict,
+    ) -> None:
+        """The upserted profile must include the incremented article count."""
+        mock_client = MagicMock()
+        mock_client.table().select().eq().execute.return_value = MagicMock(
+            data=[{"profile": existing_profile}]
+        )
+        mock_create_client.return_value = mock_client
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(
+            content=json.dumps({"updated": False})
+        )
+        mock_chat_openai.return_value = mock_llm
+
+        update_speaker_profiles(
+            articles_by_politician=self._make_articles_map(sample_articles),
+            supabase_url="https://x.supabase.co",
+            supabase_key="key",
+            openai_api_key="sk-test",
+            base_url="https://api.openai.com/v1",
+            gpt_model="gpt-4o-mini",
+        )
+
+        upsert_call = mock_client.table().upsert.call_args
+        row = upsert_call[0][0]
+        upserted_profile = json.loads(row["profile"])
+        # existing profile had total_articles=5, we added 2 sample articles
+        assert upserted_profile["dataset_insights"]["total_articles"] == 7
 
     @patch("langchain_openai.ChatOpenAI")
     @patch("supabase.create_client")

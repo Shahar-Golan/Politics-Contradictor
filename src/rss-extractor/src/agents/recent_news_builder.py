@@ -35,6 +35,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from src.agents.profile_updater import ArticleForProfile, build_articles_text
@@ -105,6 +106,69 @@ class RecentNewsItem:
 # ---------------------------------------------------------------------------
 
 
+def _filter_recent_articles(
+    articles: list[ArticleForProfile],
+    lookback_hours: int,
+) -> list[ArticleForProfile]:
+    """Return articles published within *lookback_hours* of the current time.
+
+    Articles with no date, or whose date cannot be parsed, are always included
+    because their recency cannot be determined.  Pass ``lookback_hours=0`` to
+    disable filtering and return all articles unchanged.
+
+    Args:
+        articles: Candidate articles to filter.
+        lookback_hours: Sliding window size in hours.  ``0`` disables filtering.
+
+    Returns:
+        Filtered list of articles.
+    """
+    if lookback_hours <= 0:
+        return list(articles)
+
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=lookback_hours)
+    recent: list[ArticleForProfile] = []
+    for article in articles:
+        if not article.date:
+            recent.append(article)  # undated — assume recent
+            continue
+        try:
+            pub = datetime.fromisoformat(article.date)
+            if pub.tzinfo is None:
+                pub = pub.replace(tzinfo=timezone.utc)
+            if pub >= cutoff:
+                recent.append(article)
+        except ValueError:
+            recent.append(article)  # unparseable date — assume recent
+    return recent
+
+
+def _build_fallback_items(
+    articles: list[ArticleForProfile],
+) -> list[RecentNewsItem]:
+    """Build minimal recent-news items from article metadata.
+
+    Used as a fallback when the LLM is unavailable or returns no output.
+    Each article produces one :class:`RecentNewsItem` whose ``point`` is the
+    article's headline and whose ``article_refs`` holds the article metadata.
+
+    Args:
+        articles: Articles to convert into fallback items.
+
+    Returns:
+        One :class:`RecentNewsItem` per article.
+    """
+    return [
+        RecentNewsItem(
+            point=article.title,
+            article_refs=[
+                {"title": article.title, "link": article.link, "date": article.date}
+            ],
+        )
+        for article in articles
+    ]
+
+
 def _call_llm_for_recent_news(
     llm: Any,
     politician_name: str,
@@ -170,12 +234,21 @@ def build_recent_news(
     openai_api_key: str,
     base_url: str,
     gpt_model: str,
+    lookback_hours: int = 24,
 ) -> dict[str, list[RecentNewsItem]]:
     """Build per-politician recent-news summaries from newly ingested articles.
 
-    For each politician who has at least one new article, calls an LLM to
-    generate 3–7 concise key points summarising the most important recent
-    developments.  Each key point is backed by citation(s) to source articles.
+    For each politician who has at least one article published within
+    *lookback_hours* (articles without a parseable date are always included),
+    calls an LLM to generate 3–7 concise key points summarising the most
+    important recent developments.
+
+    The politician is **always** included in the output dict as long as they
+    have recent articles:
+
+    - LLM succeeds  → use LLM-generated key points with citations.
+    - LLM fails / returns nothing → fall back to one item per article, using
+      the article headline as the key point.
 
     Args:
         articles_by_politician: Mapping of ``politician_id`` (from
@@ -184,11 +257,15 @@ def build_recent_news(
         openai_api_key: OpenAI-compatible API key (``OPENAI_API_KEY``).
         base_url: LLM API base URL (e.g. ``https://api.openai.com/v1``).
         gpt_model: LLM model identifier (e.g. ``"gpt-4o-mini"``).
+        lookback_hours: Only articles published within this many hours of the
+            current time are summarised.  Undated articles are always included.
+            Pass ``0`` to disable the filter and include all articles.
+            Defaults to ``24``.
 
     Returns:
         A dict mapping ``politician_name`` → list of :class:`RecentNewsItem`.
-        Politicians with no articles or whose LLM call fails are absent from
-        the result.
+        Politicians with no recent articles (after date filtering) are absent
+        from the result.
 
     Raises:
         RuntimeError: If the ``langchain-openai`` package is not installed.
@@ -214,12 +291,22 @@ def build_recent_news(
         if not articles:
             continue
 
+        recent_articles = _filter_recent_articles(articles, lookback_hours)
+        if not recent_articles:
+            logger.info(
+                "No articles within the last %d hours for %s — skipping.",
+                lookback_hours,
+                politician_name,
+            )
+            continue
+
         logger.info(
-            "Building recent news for %s: %d article(s).",
+            "Building recent news for %s: %d article(s) within the last %d hours.",
             politician_name,
-            len(articles),
+            len(recent_articles),
+            lookback_hours,
         )
-        items = _call_llm_for_recent_news(llm, politician_name, articles)
+        items = _call_llm_for_recent_news(llm, politician_name, recent_articles)
         if items:
             result[politician_name] = items
             logger.info(
@@ -227,8 +314,11 @@ def build_recent_news(
             )
         else:
             logger.warning(
-                "No recent news items generated for %s.", politician_name
+                "LLM produced no items for %s; using fallback from %d article(s).",
+                politician_name,
+                len(recent_articles),
             )
+            result[politician_name] = _build_fallback_items(recent_articles)
 
     return result
 

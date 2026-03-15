@@ -43,6 +43,7 @@ call :func:`update_speaker_profiles` after the Supabase article push::
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 from dataclasses import dataclass, field
@@ -176,8 +177,11 @@ class ProfileUpdateResult:
 
     Attributes:
         politicians_processed: Number of politicians whose articles were analysed.
-        profiles_updated: Number of profiles that contained new information and
-            were upserted to Supabase.
+        profiles_updated: Number of profiles where the LLM detected substantive new
+            information and a full profile upsert was performed.
+        datasets_only_updated: Number of profiles where the LLM found no new
+            substantive information, but ``dataset_insights`` (article count,
+            date range) was still updated in Supabase.
         profiles_skipped: Number of politicians where the LLM found no new
             information or who had no articles.
         errors: Number of politicians that encountered an error during processing.
@@ -185,6 +189,7 @@ class ProfileUpdateResult:
 
     politicians_processed: int = 0
     profiles_updated: int = 0
+    datasets_only_updated: int = 0
     profiles_skipped: int = 0
     errors: int = 0
 
@@ -192,6 +197,56 @@ class ProfileUpdateResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _update_dataset_insights(
+    profile: dict[str, Any],
+    articles: list[ArticleForProfile],
+) -> dict[str, Any]:
+    """Return a deep copy of *profile* with ``dataset_insights`` refreshed.
+
+    Increments ``total_articles`` by the number of newly ingested articles and
+    extends ``date_range`` to span the earliest and latest publication dates
+    seen across both the existing dataset and the new batch.
+
+    Articles without a parseable date are counted but do not affect the range.
+
+    Args:
+        profile: Existing profile dict (may be an empty dict for new speakers).
+        articles: Newly ingested articles to incorporate.
+
+    Returns:
+        A new profile dict with refreshed ``dataset_insights``.
+    """
+    updated: dict[str, Any] = copy.deepcopy(profile)
+    if not isinstance(updated.get("dataset_insights"), dict):
+        updated["dataset_insights"] = {
+            "total_articles": 0,
+            "date_range": "",
+            "top_title_keywords": {},
+            "geographic_focus": "",
+        }
+
+    di = updated["dataset_insights"]
+    di["total_articles"] = int(di.get("total_articles") or 0) + len(articles)
+
+    article_dates = sorted(a.date for a in articles if a.date)
+    if article_dates:
+        new_min, new_max = article_dates[0], article_dates[-1]
+        existing_range = str(di.get("date_range") or "")
+        sep = " – "
+        if sep in existing_range:
+            parts = existing_range.split(sep, 1)
+            ex_min, ex_max = parts[0].strip(), parts[1].strip()
+            final_min = min(ex_min, new_min) if ex_min else new_min
+            final_max = max(ex_max, new_max) if ex_max else new_max
+        else:
+            existing = existing_range.strip()
+            final_min = min(existing, new_min) if existing else new_min
+            final_max = max(existing, new_max) if existing else new_max
+        di["date_range"] = f"{final_min}{sep}{final_max}"
+
+    return updated
 
 
 def _normalize_speaker_id(politician_id: str) -> str:
@@ -375,9 +430,14 @@ def update_speaker_profiles(
 
     1. Normalises the politician ID to the ``speaker_profiles`` key format.
     2. Fetches the existing profile from Supabase (``None`` if absent).
-    3. Calls an LLM to determine whether the new articles contain substantive
-       profile-worthy information.
-    4. If an update is warranted, upserts the merged profile back to Supabase.
+    3. **Always** refreshes ``dataset_insights`` (``total_articles``,
+       ``date_range``) from the new batch — even when the LLM finds no
+       substantive new information.
+    4. Calls an LLM to determine whether the new articles contain substantive
+       profile-worthy information (new roles, controversies, positions, etc.).
+    5. Upserts the profile back to Supabase:
+       - Full LLM-merged profile if substantive new info was found.
+       - Dataset-insights-only update otherwise.
 
     Args:
         articles_by_politician: Mapping of ``politician_id`` (from
@@ -435,16 +495,35 @@ def update_speaker_profiles(
         )
 
         existing_profile = _fetch_profile(client, speaker_id, profiles_table)
+
+        # Always refresh dataset_insights regardless of what the LLM decides.
+        profile_with_counts = _update_dataset_insights(
+            existing_profile or dict(_DEFAULT_PROFILE_SCHEMA),
+            articles,
+        )
+
         updated_profile = _call_llm_for_profile_update(
             llm, politician_name, existing_profile, articles
         )
 
-        if updated_profile is None:
-            logger.info(
-                "No new profile information found for %s.", politician_name
-            )
+        if updated_profile is not None:
+            # Full LLM update — carry over the freshly computed dataset_insights.
+            updated_profile["dataset_insights"] = profile_with_counts[
+                "dataset_insights"
+            ]
+            final_profile = updated_profile
+            result.profiles_updated += 1
+            logger.info("New substantive information found for %s.", politician_name)
+        else:
+            # No new substantive info — still upsert the refreshed dataset_insights.
+            final_profile = profile_with_counts
+            result.datasets_only_updated += 1
             result.profiles_skipped += 1
-            continue
+            logger.info(
+                "No new substantive profile information for %s; "
+                "updating dataset_insights only.",
+                politician_name,
+            )
 
         if dry_run:
             logger.info(
@@ -452,16 +531,19 @@ def update_speaker_profiles(
                 politician_name,
                 speaker_id,
             )
-            result.profiles_updated += 1
         else:
             try:
-                _upsert_profile(client, speaker_id, updated_profile, profiles_table)
+                _upsert_profile(client, speaker_id, final_profile, profiles_table)
                 logger.info("Upserted profile for %s.", politician_name)
-                result.profiles_updated += 1
             except Exception:
                 logger.exception(
                     "Failed to upsert profile for %s.", politician_name
                 )
+                # Roll back the increment that was already applied above.
+                if updated_profile is not None:
+                    result.profiles_updated -= 1
+                else:
+                    result.datasets_only_updated -= 1
                 result.errors += 1
 
     return result

@@ -530,7 +530,7 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
     # Stage 6: Update speaker profiles & export recent-news JSON
     # -----------------------------------------------------------------------
     gha_group("Stage 6 — Update speaker profiles & export recent-news JSON")
-    profiles_updated = profiles_skipped = profile_errors = 0
+    profiles_updated = profiles_skipped = profile_errors = profiles_datasets_only = 0
     recent_news_politicians: list[str] = []
 
     if args.skip_profile_update:
@@ -619,6 +619,7 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                     )
                     profiles_updated = update_result.profiles_updated
                     profiles_skipped = update_result.profiles_skipped
+                    profiles_datasets_only = update_result.datasets_only_updated
                     profile_errors = update_result.errors
                     if profile_errors:
                         gha_warning(
@@ -626,6 +627,7 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
                         )
                     print(
                         f"Stage 6b complete: profiles updated={profiles_updated}, "
+                        f"datasets-only={profiles_datasets_only}, "
                         f"skipped={profiles_skipped}, errors={profile_errors}.",
                         flush=True,
                     )
@@ -669,7 +671,9 @@ def main() -> None:  # noqa: C901  (complexity is acceptable for a pipeline runn
         speakers_str = ", ".join(recent_news_politicians) or "none"
         summary_lines.append(
             f"| 6 · Speaker profiles & recent news | "
-            f"profiles updated={profiles_updated}, skipped={profiles_skipped}, "
+            f"profiles updated={profiles_updated}, "
+            f"datasets-only={profiles_datasets_only}, "
+            f"skipped={profiles_skipped}, "
             f"errors={profile_errors}; recent-news for: {speakers_str} |"
         )
     _write_step_summary("\n".join(summary_lines))
